@@ -174,6 +174,24 @@
             </intent-filter>
         </activity>
 
+        <!--
+          Bubble trampoline activity. Bubbles cannot embed activities with launchMode="singleTask".
+          This lightweight activity receives the bubble intent, forwards it to MainActivity, then finishes.
+        -->
+        <activity
+            android:name=".BubbleActivity"
+            android:allowEmbedded="true"
+            android:resizeableActivity="true"
+            android:taskAffinity=".bubble"
+            android:excludeFromRecents="true"
+            android:documentLaunchMode="always"
+            android:finishOnTaskLaunch="false"
+            android:launchMode="standard"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:theme="@style/Theme.ElementX"
+            android:windowSoftInputMode="adjustResize" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

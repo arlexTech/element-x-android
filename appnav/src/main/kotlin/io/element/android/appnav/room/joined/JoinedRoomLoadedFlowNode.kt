@@ -34,6 +34,10 @@ import io.element.android.features.space.api.SpaceEntryPoint
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.NodeInputs
+import io.element.android.libraries.architecture.appyx.BubblePlugin
+import io.element.android.libraries.architecture.appyx.launchMolecule
+import io.element.android.libraries.architecture.appyx.anyParent
+import io.element.android.libraries.architecture.bindings
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.architecture.waitForChildAttached
@@ -104,21 +108,34 @@ class JoinedRoomLoadedFlowNode(
     init {
         lifecycle.subscribe(
             onCreate = {
-                Timber.v("OnCreate => ${inputs.room.roomId}")
-                appNavigationStateService.onNavigateToRoom(id, inputs.room.roomId)
-                activeRoomsHolder.addRoom(inputs.room)
-                sendMessageWatcher?.start()
-                fetchRoomMembers()
-                trackVisitedRoom()
+                android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnCreate start => ${inputs.room.roomId}")
+                try {
+                    val isBubble = anyParent { it.plugins.filterIsInstance<BubblePlugin>().isNotEmpty() }
+                    android.util.Log.e("BubbleDebug", "JoinedRoomLoadedFlowNode: isBubble=$isBubble")
+                    appNavigationStateService.onNavigateToRoom(id, inputs.room.roomId, isBubble)
+                    activeRoomsHolder.addRoom(inputs.room)
+                    sendMessageWatcher?.start()
+                    fetchRoomMembers()
+                    trackVisitedRoom()
+                    android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnCreate end")
+                } catch (e: Exception) {
+                    android.util.Log.e("BubbleDebug", "JoinedRoomLoadedFlowNode: Error in OnCreate", e)
+                }
             },
             onResume = {
+                android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnResume start")
                 analyticsService.finishLongRunningTransaction(LoadJoinedRoomFlow)
                 sessionCoroutineScope.launch {
-                    inputs.room.subscribeToSync()
+                    try {
+                        inputs.room.subscribeToSync()
+                        android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: Room subscribed to sync")
+                    } catch (e: Exception) {
+                        android.util.Log.e("BubbleDebug", "JoinedRoomLoadedFlowNode: Error subscribing to sync", e)
+                    }
                 }
             },
             onDestroy = {
-                Timber.v("OnDestroy")
+                android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnDestroy configurations=${currentActivity?.isChangingConfigurations}")
                 sendMessageWatcher?.stop()
                 // If we're just going through an activity recreation there's no need to destroy the Room object
                 // Destroying it would actually cause an issue where its methods can no longer be called

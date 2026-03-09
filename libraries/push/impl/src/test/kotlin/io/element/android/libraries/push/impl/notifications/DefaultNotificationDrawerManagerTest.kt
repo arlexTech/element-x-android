@@ -37,10 +37,17 @@ import io.element.android.libraries.push.impl.notifications.fixtures.aSimpleNoti
 import io.element.android.libraries.push.impl.notifications.fixtures.anInviteNotifiableEvent
 import io.element.android.libraries.push.impl.notifications.model.NotifiableEvent
 import io.element.android.libraries.sessionstorage.api.SessionStore
+import io.element.android.libraries.sessionstorage.api.observer.SessionListener
 import io.element.android.libraries.sessionstorage.api.observer.SessionObserver
 import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
 import io.element.android.libraries.sessionstorage.test.observer.FakeSessionObserver
 import io.element.android.services.analytics.test.FakeAnalyticsService
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStoreFactory
+import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
+import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
+import io.element.android.libraries.push.test.notifications.conversations.FakeNotificationConversationService
 import io.element.android.services.appnavstate.api.AppNavigationState
 import io.element.android.services.appnavstate.api.AppNavigationStateService
 import io.element.android.services.appnavstate.test.FakeAppNavigationStateService
@@ -56,6 +63,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import io.element.android.libraries.matrix.api.core.SessionId
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DefaultNotificationDrawerManagerTest {
@@ -510,6 +518,11 @@ fun TestScope.createDefaultNotificationDrawerManager(
     enterpriseService: EnterpriseService = FakeEnterpriseService(),
     sessionObserver: SessionObserver = FakeSessionObserver(),
     analyticsService: FakeAnalyticsService = FakeAnalyticsService(),
+    appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(isBubblesEnabled = false, isBubblesEnabledForAllConversations = false),
+    sessionPreferencesStoreFactory: SessionPreferencesStoreFactory = object : SessionPreferencesStoreFactory {
+        override fun get(sessionId: SessionId, sessionCoroutineScope: kotlinx.coroutines.CoroutineScope): SessionPreferencesStore = InMemorySessionPreferencesStore()
+        override fun remove(sessionId: SessionId) {}
+    },
 ): DefaultNotificationDrawerManager {
     return DefaultNotificationDrawerManager(
         notificationDisplayer = notificationDisplayer,
@@ -524,6 +537,7 @@ fun TestScope.createDefaultNotificationDrawerManager(
             enterpriseService = enterpriseService,
             sessionStore = sessionStore,
             analyticsService = analyticsService,
+            notificationConversationService = FakeNotificationConversationService(),
         ),
         appNavigationStateService = appNavigationStateService,
         coroutineScope = backgroundScope,
@@ -531,5 +545,8 @@ fun TestScope.createDefaultNotificationDrawerManager(
         imageLoaderHolder = FakeImageLoaderHolder(),
         activeNotificationsProvider = activeNotificationsProvider,
         sessionObserver = sessionObserver,
+        appPreferencesStore = appPreferencesStore,
+        sessionPreferencesStoreFactory = sessionPreferencesStoreFactory,
     )
 }
+```

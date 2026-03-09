@@ -31,6 +31,7 @@ class InMemorySessionPreferencesStore(
     private val isSessionVerificationSkipped = MutableStateFlow(isSessionVerificationSkipped)
     private val doesCompressMedia = MutableStateFlow(doesCompressMedia)
     private val videoCompressionPreset = MutableStateFlow(videoCompressionPreset)
+    private val bubbleEnabledRooms = mutableMapOf<String, MutableStateFlow<Boolean>>()
     var clearCallCount = 0
         private set
 
@@ -82,6 +83,14 @@ class InMemorySessionPreferencesStore(
 
     override fun getVideoCompressionPreset(): Flow<VideoCompressionPreset> {
         return videoCompressionPreset
+    }
+
+    override suspend fun setBubbleEnabledForRoom(roomId: String, enabled: Boolean) {
+        bubbleEnabledRooms.getOrPut(roomId) { MutableStateFlow(false) }.value = enabled
+    }
+
+    override fun isBubbleEnabledForRoom(roomId: String): Flow<Boolean> {
+        return bubbleEnabledRooms.getOrPut(roomId) { MutableStateFlow(false) }
     }
 
     override suspend fun clear() {

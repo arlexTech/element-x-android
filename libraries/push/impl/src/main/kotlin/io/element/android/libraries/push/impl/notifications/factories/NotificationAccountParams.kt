@@ -10,9 +10,13 @@ package io.element.android.libraries.push.impl.notifications.factories
 
 import androidx.annotation.ColorInt
 import io.element.android.libraries.matrix.api.user.MatrixUser
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 
 data class NotificationAccountParams(
     val user: MatrixUser,
     @ColorInt val color: Int,
     val showSessionId: Boolean,
+    val isBubblesEnabled: Boolean,
+    val isBubblesEnabledForAllConversations: Boolean,
+    val sessionPreferencesStore: SessionPreferencesStore? = null,
 )

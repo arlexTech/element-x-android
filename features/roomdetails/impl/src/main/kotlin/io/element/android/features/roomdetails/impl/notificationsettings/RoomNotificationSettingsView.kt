@@ -144,6 +144,19 @@ private fun RoomSpecificNotificationSettingsView(
                 }
             }
 
+            if (state.isBubblesEnabled && !state.isBubblesEnabledForAllConversations) {
+                PreferenceCategory {
+                    PreferenceSwitch(
+                        isChecked = state.isBubbleEnabledForRoom,
+                        onCheckedChange = {
+                            state.eventSink(RoomNotificationSettingsEvent.SetBubbleEnabled(it))
+                        },
+                        title = stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                        enabled = true
+                    )
+                }
+            }
+
             AsyncActionView(
                 async = state.setNotificationSettingAction,
                 onSuccess = {},

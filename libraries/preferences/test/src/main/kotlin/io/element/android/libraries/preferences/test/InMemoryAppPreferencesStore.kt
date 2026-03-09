@@ -31,6 +31,8 @@ class InMemoryAppPreferencesStore(
     private val tracingLogPacks = MutableStateFlow(traceLockPacks)
     private val hideInviteAvatars = MutableStateFlow(hideInviteAvatars)
     private val timelineMediaPreviewValue = MutableStateFlow(timelineMediaPreviewValue)
+    private val isBubblesEnabled = MutableStateFlow(false)
+    private val isBubblesEnabledForAllConversations = MutableStateFlow(false)
 
     override suspend fun setDeveloperModeEnabled(enabled: Boolean) {
         isDeveloperModeEnabled.value = enabled
@@ -90,6 +92,22 @@ class InMemoryAppPreferencesStore(
 
     override fun getTracingLogPacksFlow(): Flow<Set<TraceLogPack>> {
         return tracingLogPacks
+    }
+
+    override suspend fun setBubblesEnabled(enabled: Boolean) {
+        isBubblesEnabled.value = enabled
+    }
+
+    override fun isBubblesEnabledFlow(): Flow<Boolean> {
+        return isBubblesEnabled
+    }
+
+    override suspend fun setBubblesEnabledForAllConversations(enabled: Boolean) {
+        isBubblesEnabledForAllConversations.value = enabled
+    }
+
+    override fun isBubblesEnabledForAllConversationsFlow(): Flow<Boolean> {
+        return isBubblesEnabledForAllConversations
     }
 
     override suspend fun reset() {

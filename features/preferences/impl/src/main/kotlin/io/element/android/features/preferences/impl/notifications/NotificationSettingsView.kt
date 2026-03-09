@@ -182,6 +182,22 @@ private fun NotificationSettingsContentView(
                 onCheckedChange = onMentionNotificationsChange
             )
         }
+        PreferenceCategory(title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_label)) {
+            PreferenceSwitch(
+                modifier = Modifier,
+                title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_label),
+                isChecked = systemSettings.isBubblesEnabled,
+                onCheckedChange = { state.eventSink(NotificationSettingsEvents.SetBubblesEnabled(it)) }
+            )
+            if (systemSettings.isBubblesEnabled) {
+                PreferenceSwitch(
+                    modifier = Modifier,
+                    title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_all_conversations_label),
+                    isChecked = systemSettings.isBubblesEnabledForAllConversations,
+                    onCheckedChange = { state.eventSink(NotificationSettingsEvents.SetBubblesEnabledForAllConversations(it)) }
+                )
+            }
+        }
         PreferenceCategory(title = stringResource(id = R.string.screen_notification_settings_additional_settings_section_title)) {
             // TODO We are removing the call notification toggle until support for call notifications has been added
 //                PreferenceSwitch(

@@ -97,9 +97,12 @@ class JoinedRoomFlowNode(
             }
             .distinctUntilChanged()
             .onEach { isLoaded ->
+                android.util.Log.e("BubbleDebug", "JoinedRoomFlowNode: isLoaded=$isLoaded")
                 if (isLoaded) {
+                    android.util.Log.e("BubbleDebug", "JoinedRoomFlowNode: Switching to NavTarget.Loaded")
                     backstack.newRoot(NavTarget.Loaded)
                 } else {
+                    android.util.Log.e("BubbleDebug", "JoinedRoomFlowNode: Switching to NavTarget.Loading")
                     backstack.newRoot(NavTarget.Loading)
                 }
             }

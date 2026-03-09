@@ -37,6 +37,11 @@ interface AppPreferencesStore {
 
     suspend fun setTracingLogPacks(targets: Set<TraceLogPack>)
     fun getTracingLogPacksFlow(): Flow<Set<TraceLogPack>>
+    suspend fun setBubblesEnabled(enabled: Boolean)
+    fun isBubblesEnabledFlow(): Flow<Boolean>
+
+    suspend fun setBubblesEnabledForAllConversations(enabled: Boolean)
+    fun isBubblesEnabledForAllConversationsFlow(): Flow<Boolean>
 
     suspend fun reset()
 }

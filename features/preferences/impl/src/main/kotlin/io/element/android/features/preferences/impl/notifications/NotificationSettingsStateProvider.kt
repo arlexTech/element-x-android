@@ -74,6 +74,8 @@ fun aValidNotificationSettingsState(
     appSettings = NotificationSettingsState.AppSettings(
         systemNotificationsEnabled = systemNotificationsEnabled,
         appNotificationsEnabled = appNotificationEnabled,
+        isBubblesEnabled = false,
+        isBubblesEnabledForAllConversations = false,
     ),
     changeNotificationSettingAction = changeNotificationSettingAction,
     currentPushDistributor = currentPushDistributor,
@@ -93,6 +95,8 @@ fun aInvalidNotificationSettingsState(
     appSettings = NotificationSettingsState.AppSettings(
         systemNotificationsEnabled = false,
         appNotificationsEnabled = true,
+        isBubblesEnabled = false,
+        isBubblesEnabledForAllConversations = false,
     ),
     changeNotificationSettingAction = AsyncAction.Uninitialized,
     currentPushDistributor = AsyncData.Uninitialized,

@@ -15,6 +15,8 @@ import io.element.android.libraries.matrix.test.AN_EXCEPTION
 import io.element.android.libraries.matrix.test.A_ROOM_ID
 import io.element.android.libraries.matrix.test.notificationsettings.FakeNotificationSettingsService
 import io.element.android.libraries.matrix.test.room.FakeJoinedRoom
+import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
+import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.tests.testutils.awaitLastSequentialItem
 import io.element.android.tests.testutils.consumeItemsUntilPredicate
 import io.element.android.tests.testutils.test
@@ -165,10 +167,14 @@ class RoomNotificationSettingsPresenterTest {
     private fun createRoomNotificationSettingsPresenter(
         notificationSettingsService: FakeNotificationSettingsService = FakeNotificationSettingsService(),
         room: FakeJoinedRoom = aJoinedRoom(notificationSettingsService = notificationSettingsService),
+        appPreferencesStore: InMemoryAppPreferencesStore = InMemoryAppPreferencesStore(),
+        sessionPreferencesStore: InMemorySessionPreferencesStore = InMemorySessionPreferencesStore(),
     ): RoomNotificationSettingsPresenter {
         return RoomNotificationSettingsPresenter(
             room = room,
             notificationSettingsService = notificationSettingsService,
+            appPreferencesStore = appPreferencesStore,
+            sessionPreferencesStore = sessionPreferencesStore,
             showUserDefinedSettingStyle = false,
         )
     }

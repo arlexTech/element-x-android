@@ -19,6 +19,7 @@ import androidx.core.os.bundleOf
 import coil3.ImageLoader
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
+import kotlinx.coroutines.flow.first
 import io.element.android.libraries.core.meta.BuildMeta
 import io.element.android.libraries.designsystem.components.avatar.AvatarData
 import io.element.android.libraries.designsystem.components.avatar.AvatarSize
@@ -211,6 +212,34 @@ class DefaultNotificationCreator(
             .setLargeIcon(largeIcon)
             .setDeleteIntent(pendingIntentFactory.createDismissRoomPendingIntent(roomInfo.sessionId, roomInfo.roomId))
             .apply {
+                if (notificationAccountParams.isBubblesEnabled) {
+                    val isBubbleEnabledForRoom = notificationAccountParams.sessionPreferencesStore
+                        ?.isBubbleEnabledForRoom(roomInfo.roomId.value)?.first() ?: false
+
+                    if (notificationAccountParams.isBubblesEnabledForAllConversations || isBubbleEnabledForRoom) {
+                        // Bubbles require a separate MUTABLE PendingIntent (Android requirement)
+                        val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
+                            sessionId = roomInfo.sessionId,
+                            roomId = roomInfo.roomId,
+                            eventId = events.firstOrNull()?.eventId,
+                            extras = bundleOf(ROOM_OPENED_FROM_NOTIFICATION to true),
+                        )
+                        if (bubbleIntent != null) {
+                            setBubbleMetadata(
+                                NotificationCompat.BubbleMetadata.Builder(
+                                    bubbleIntent,
+                                    androidx.core.graphics.drawable.IconCompat.createWithBitmap(
+                                        largeIcon ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                                    )
+                                )
+                                    .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                                    .setAutoExpandBubble(true)
+                                    .setSuppressNotification(false)
+                                    .build()
+                            )
+                        }
+                    }
+                }
                 // Sets priority for 25 and below. For 26 and above, 'priority' is deprecated for
                 // 'importance' which is set in the NotificationChannel. The integers representing
                 // 'priority' are different from 'importance', so make sure you don't mix them.

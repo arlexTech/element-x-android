@@ -33,3 +33,10 @@ fun <State> Node.launchMolecule(body: @Composable () -> State): StateFlow<State>
         state
     }
 }
+
+/**
+ * Traverses up the node tree and returns true if any parent matches the predicate.
+ */
+fun Node.anyParent(predicate: (Node) -> Boolean): Boolean {
+    return generateSequence(parent) { it.parent }.any(predicate)
+}

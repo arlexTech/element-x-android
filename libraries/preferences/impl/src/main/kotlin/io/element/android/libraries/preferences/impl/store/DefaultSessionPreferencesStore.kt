@@ -94,6 +94,9 @@ class DefaultSessionPreferencesStore(
     override fun getVideoCompressionPreset(): Flow<VideoCompressionPreset> = get(compressMediaPreset) { VideoCompressionPreset.STANDARD.name }
         .map { tryOrNull { VideoCompressionPreset.valueOf(it) } ?: VideoCompressionPreset.STANDARD }
 
+    override suspend fun setBubbleEnabledForRoom(roomId: String, enabled: Boolean) = update(booleanPreferencesKey("bubble_enabled_$roomId"), enabled)
+    override fun isBubbleEnabledForRoom(roomId: String): Flow<Boolean> = get(booleanPreferencesKey("bubble_enabled_$roomId")) { false }
+
     override suspend fun clear() {
         dataStoreFile.safeDelete()
     }

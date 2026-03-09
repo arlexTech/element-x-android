@@ -182,7 +182,9 @@ class HomeFlowNode(
             fun navigateToRoom(
                 roomId: RoomId,
             ) {
+                android.util.Log.e("BubbleDebug", "HomeFlowNode: navigateToRoom $roomId")
                 if (!loadingJoinedRoomJob.value.isUninitialized()) {
+                    android.util.Log.e("BubbleDebug", "HomeFlowNode: Already loading a room, ignoring")
                     Timber.w("Already loading a room, ignoring navigateToRoom for $roomId")
                     return
                 }
@@ -192,7 +194,9 @@ class HomeFlowNode(
                         matrixClient.getJoinedRoom(roomId)
                     }.fold(
                         onSuccess = { joinedRoom ->
+                            android.util.Log.e("BubbleDebug", "HomeFlowNode: getJoinedRoom success, joinedRoom=$joinedRoom")
                             if (isActive) {
+                                android.util.Log.e("BubbleDebug", "HomeFlowNode: calling callback.navigateToRoom")
                                 callback.navigateToRoom(roomId, joinedRoom)
                                 loadingJoinedRoomJob.value = AsyncData.Success(coroutineContext.job)
                                 // Wait a bit before resetting the state to avoid allowing to open several rooms
@@ -201,6 +205,7 @@ class HomeFlowNode(
                             }
                         },
                         onFailure = {
+                            android.util.Log.e("BubbleDebug", "HomeFlowNode: getJoinedRoom failure", it)
                             // If the operation wasn't cancelled, navigate without the room, using the room id
                             if (it !is CancellationException) {
                                 callback.navigateToRoom(roomId, null)

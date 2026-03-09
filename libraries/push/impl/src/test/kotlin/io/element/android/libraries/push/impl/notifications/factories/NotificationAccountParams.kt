@@ -13,12 +13,21 @@ import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.matrix.test.A_COLOR_INT
 import io.element.android.libraries.matrix.ui.components.aMatrixUser
 
+import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
+
 fun aNotificationAccountParams(
     user: MatrixUser = aMatrixUser(),
     @ColorInt color: Int = A_COLOR_INT,
     showSessionId: Boolean = false,
+    isBubblesEnabled: Boolean = false,
+    isBubblesEnabledForAllConversations: Boolean = false,
+    sessionPreferencesStore: SessionPreferencesStore = InMemorySessionPreferencesStore(),
 ) = NotificationAccountParams(
     user = user,
     color = color,
     showSessionId = showSessionId,
+    isBubblesEnabled = isBubblesEnabled,
+    isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
+    sessionPreferencesStore = sessionPreferencesStore,
 )

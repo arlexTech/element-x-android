@@ -68,26 +68,26 @@ class DefaultAppNavigationStateService(
         state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
-    override fun onNavigateToRoom(owner: String, roomId: RoomId) {
+    override fun onNavigateToRoom(owner: String, roomId: RoomId, isBubble: Boolean) {
         val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Navigating to room $roomId. Current state: $currentValue")
+        Timber.tag(loggerTag.value).d("Navigating to room $roomId (isBubble=$isBubble). Current state: $currentValue")
         val newValue: NavigationState.Room = when (currentValue) {
             NavigationState.Root -> return logError("onNavigateToSession()")
-            is NavigationState.Session -> NavigationState.Room(owner, roomId, currentValue)
-            is NavigationState.Room -> NavigationState.Room(owner, roomId, currentValue.parentSession)
-            is NavigationState.Thread -> NavigationState.Room(owner, roomId, currentValue.parentRoom.parentSession)
+            is NavigationState.Session -> NavigationState.Room(owner, roomId, currentValue, isBubble)
+            is NavigationState.Room -> NavigationState.Room(owner, roomId, currentValue.parentSession, isBubble)
+            is NavigationState.Thread -> NavigationState.Room(owner, roomId, currentValue.parentRoom.parentSession, isBubble)
         }
         state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
-    override fun onNavigateToThread(owner: String, threadId: ThreadId) {
+    override fun onNavigateToThread(owner: String, threadId: ThreadId, isBubble: Boolean) {
         val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Navigating to thread $threadId. Current state: $currentValue")
+        Timber.tag(loggerTag.value).d("Navigating to thread $threadId (isBubble=$isBubble). Current state: $currentValue")
         val newValue: NavigationState.Thread = when (currentValue) {
             NavigationState.Root -> return logError("onNavigateToSession()")
             is NavigationState.Session -> return logError("onNavigateToRoom()")
-            is NavigationState.Room -> NavigationState.Thread(owner, threadId, currentValue)
-            is NavigationState.Thread -> NavigationState.Thread(owner, threadId, currentValue.parentRoom)
+            is NavigationState.Room -> NavigationState.Thread(owner, threadId, currentValue, isBubble)
+            is NavigationState.Thread -> NavigationState.Thread(owner, threadId, currentValue.parentRoom, isBubble)
         }
         state.getAndUpdate { it.copy(navigationState = newValue) }
     }

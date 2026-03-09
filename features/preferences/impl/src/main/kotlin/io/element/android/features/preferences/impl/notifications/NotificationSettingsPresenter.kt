@@ -35,6 +35,7 @@ import io.element.android.libraries.pushproviders.api.Distributor
 import io.element.android.libraries.pushproviders.api.PushProvider
 import io.element.android.libraries.pushstore.api.UserPushStore
 import io.element.android.libraries.pushstore.api.UserPushStoreFactory
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
@@ -51,6 +52,7 @@ class NotificationSettingsPresenter(
     private val matrixClient: MatrixClient,
     private val pushService: PushService,
     private val systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider,
+    private val appPreferencesStore: AppPreferencesStore,
     private val fullScreenIntentPermissionsPresenter: Presenter<FullScreenIntentPermissionsState>,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
@@ -67,6 +69,12 @@ class NotificationSettingsPresenter(
         val appNotificationsEnabled by remember {
             userPushStore.getNotificationEnabledForDevice()
         }.collectAsState(initial = false)
+
+        val isBubblesEnabled by appPreferencesStore.isBubblesEnabledFlow()
+            .collectAsState(initial = false)
+
+        val isBubblesEnabledForAllConversations by appPreferencesStore.isBubblesEnabledForAllConversationsFlow()
+            .collectAsState(initial = false)
 
         val matrixSettings: MutableState<NotificationSettingsState.MatrixSettings> = remember {
             mutableStateOf(NotificationSettingsState.MatrixSettings.Uninitialized)
@@ -157,6 +165,17 @@ class NotificationSettingsPresenter(
                 NotificationSettingsEvents.ChangePushProvider -> showChangePushProviderDialog = true
                 NotificationSettingsEvents.CancelChangePushProvider -> showChangePushProviderDialog = false
                 is NotificationSettingsEvents.SetPushProvider -> localCoroutineScope.changePushProvider(distributors.getOrNull(event.index))
+                is NotificationSettingsEvents.SetBubblesEnabled -> {
+                    localCoroutineScope.launch {
+                        appPreferencesStore.setBubblesEnabled(event.enabled)
+                        if (!event.enabled) {
+                            appPreferencesStore.setBubblesEnabledForAllConversations(false)
+                        }
+                    }
+                }
+                is NotificationSettingsEvents.SetBubblesEnabledForAllConversations -> {
+                    localCoroutineScope.launch { appPreferencesStore.setBubblesEnabledForAllConversations(event.enabled) }
+                }
             }
         }
 
@@ -165,6 +184,8 @@ class NotificationSettingsPresenter(
             appSettings = NotificationSettingsState.AppSettings(
                 systemNotificationsEnabled = systemNotificationsEnabled.value,
                 appNotificationsEnabled = appNotificationsEnabled,
+                isBubblesEnabled = isBubblesEnabled,
+                isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
             ),
             changeNotificationSettingAction = changeNotificationSettingAction.value,
             currentPushDistributor = currentDistributor,

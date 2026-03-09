@@ -32,11 +32,13 @@ sealed class NavigationState(open val owner: String) {
         override val owner: String,
         val roomId: RoomId,
         val parentSession: Session,
+        val isBubble: Boolean = false,
     ) : NavigationState(owner)
 
     data class Thread(
         override val owner: String,
         val threadId: ThreadId,
         val parentRoom: Room,
+        val isBubble: Boolean = false,
     ) : NavigationState(owner)
 }

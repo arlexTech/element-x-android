@@ -164,13 +164,14 @@ class RoomFlowNode(
             .distinctUntilChanged()
             .withPreviousValue()
         currentMembershipFlow.onEach { (previousMembership, membership) ->
-            Timber.d("Room membership: $membership")
+            android.util.Log.e("BubbleDebug", "RoomFlowNode: membership update: $previousMembership -> $membership")
             if (membership == CurrentUserMembership.JOINED) {
                 val currentNavTarget = backstack.active?.key?.navTarget
                 if (currentNavTarget is NavTarget.JoinedRoom && currentNavTarget.roomId == roomId) {
-                    Timber.d("Already in JoinedRoom $roomId, do nothing")
+                    android.util.Log.e("BubbleDebug", "RoomFlowNode: Already in JoinedRoom $roomId")
                     return@onEach
                 }
+                android.util.Log.e("BubbleDebug", "RoomFlowNode: Switching to NavTarget.JoinedRoom($roomId)")
                 backstack.newRoot(NavTarget.JoinedRoom(roomId))
             } else {
                 val leavingFromCurrentDevice =

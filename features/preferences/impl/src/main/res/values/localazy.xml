@@ -66,6 +66,8 @@ If you proceed, some of your settings may change."</string>
   <string name="screen_notification_settings_failed_fixing_configuration">"The configuration has not been corrected, please try again."</string>
   <string name="screen_notification_settings_group_chats">"Group chats"</string>
   <string name="screen_notification_settings_invite_for_me_label">"Invitations"</string>
+  <string name="screen_notification_settings_enable_bubbles_label">"Enable bubbles"</string>
+  <string name="screen_notification_settings_enable_bubbles_all_conversations_label">"All conversations can bubble"</string>
   <string name="screen_notification_settings_mentions_only_disclaimer">"Your homeserver does not support this option in encrypted rooms, you may not get notified in some rooms."</string>
   <string name="screen_notification_settings_mentions_section_title">"Mentions"</string>
   <string name="screen_notification_settings_mode_all">"All"</string>

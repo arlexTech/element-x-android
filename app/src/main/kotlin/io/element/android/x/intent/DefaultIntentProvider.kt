@@ -21,6 +21,7 @@ import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.push.impl.intent.IntentProvider
+import io.element.android.x.BubbleActivity
 import io.element.android.x.MainActivity
 
 @ContributesBinding(AppScope::class)
@@ -40,5 +41,27 @@ class DefaultIntentProvider(
             data = deepLinkCreator.create(sessionId, roomId, threadId, eventId).toUri()
             extras?.let(::putExtras)
         }
+    }
+
+    override fun getBubbleRoomIntent(
+        sessionId: SessionId,
+        roomId: RoomId,
+        eventId: EventId?,
+        extras: Bundle?,
+    ): Intent {
+        return Intent(context, BubbleActivity::class.java).apply {
+            action = ACTION_OPEN_BUBBLE
+            putExtra(EXTRA_SESSION_ID, sessionId.value)
+            putExtra(EXTRA_ROOM_ID, roomId.value)
+            putExtra(EXTRA_EVENT_ID, eventId?.value)
+            extras?.let(::putExtras)
+        }
+    }
+
+    companion object {
+        const val ACTION_OPEN_BUBBLE = "io.element.android.x.ACTION_OPEN_BUBBLE"
+        const val EXTRA_SESSION_ID = "EXTRA_SESSION_ID"
+        const val EXTRA_ROOM_ID = "EXTRA_ROOM_ID"
+        const val EXTRA_EVENT_ID = "EXTRA_EVENT_ID"
     }
 }

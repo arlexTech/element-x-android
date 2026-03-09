@@ -23,6 +23,9 @@ data class RoomNotificationSettingsState(
     val setNotificationSettingAction: AsyncAction<Unit>,
     val restoreDefaultAction: AsyncAction<Unit>,
     val displayMentionsOnlyDisclaimer: Boolean,
+    val isBubblesEnabled: Boolean,
+    val isBubblesEnabledForAllConversations: Boolean,
+    val isBubbleEnabledForRoom: Boolean,
     val eventSink: (RoomNotificationSettingsEvent) -> Unit
 )
 

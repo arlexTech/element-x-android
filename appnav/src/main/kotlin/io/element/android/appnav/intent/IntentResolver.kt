@@ -16,6 +16,10 @@ import io.element.android.features.share.api.ShareIntentData
 import io.element.android.features.share.api.ShareIntentHandler
 import io.element.android.libraries.deeplink.api.DeeplinkData
 import io.element.android.libraries.deeplink.api.DeeplinkParser
+import io.element.android.libraries.matrix.api.core.EventId
+import io.element.android.libraries.matrix.api.core.RoomId
+import io.element.android.libraries.matrix.api.core.SessionId
+import io.element.android.libraries.matrix.api.core.ThreadId
 import io.element.android.libraries.matrix.api.permalink.PermalinkData
 import io.element.android.libraries.matrix.api.permalink.PermalinkParser
 import io.element.android.libraries.oidc.api.OidcAction
@@ -42,7 +46,7 @@ class IntentResolver(
         if (intent.canBeIgnored()) return null
 
         // Coming from a notification?
-        val deepLinkData = deeplinkParser.getFromIntent(intent)
+        val deepLinkData = deeplinkParser.getFromIntent(intent) ?: intent.getBubbleDeeplinkData()
         if (deepLinkData != null) return ResolvedIntent.Navigation(deepLinkData)
 
         // Coming during login using Oidc?
@@ -73,6 +77,14 @@ class IntentResolver(
         Timber.w("Unknown intent")
         return null
     }
+}
+
+private fun Intent.getBubbleDeeplinkData(): DeeplinkData? {
+    if (action != "io.element.android.x.ACTION_OPEN_BUBBLE") return null
+    val sessionId = getStringExtra("EXTRA_SESSION_ID")?.let(::SessionId) ?: return null
+    val roomId = getStringExtra("EXTRA_ROOM_ID")?.let(::RoomId) ?: return null
+    val eventId = getStringExtra("EXTRA_EVENT_ID")?.let(::EventId)
+    return DeeplinkData.Room(sessionId, roomId, threadId = null, eventId)
 }
 
 private fun Intent.canBeIgnored(): Boolean {

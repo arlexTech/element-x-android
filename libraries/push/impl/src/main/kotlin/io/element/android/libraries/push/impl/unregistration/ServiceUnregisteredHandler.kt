@@ -18,6 +18,8 @@ import io.element.android.libraries.push.impl.notifications.NotificationDisplaye
 import io.element.android.libraries.push.impl.notifications.factories.NotificationAccountParams
 import io.element.android.libraries.push.impl.notifications.factories.NotificationCreator
 import io.element.android.libraries.sessionstorage.api.SessionStore
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import kotlinx.coroutines.flow.first
 
 interface ServiceUnregisteredHandler {
@@ -30,16 +32,23 @@ class DefaultServiceUnregisteredHandler(
     private val notificationCreator: NotificationCreator,
     private val notificationDisplayer: NotificationDisplayer,
     private val sessionStore: SessionStore,
+    private val appPreferencesStore: AppPreferencesStore,
 ) : ServiceUnregisteredHandler {
     override suspend fun handle(userId: UserId) {
         val color = enterpriseService.brandColorsFlow(userId).first()?.toArgb()
             ?: NotificationConfig.NOTIFICATION_ACCENT_COLOR
         val hasMultipleAccounts = sessionStore.numberOfSessions() > 1
+        
+        val isBubblesEnabled = appPreferencesStore.isBubblesEnabledFlow().first()
+        val isBubblesEnabledForAllConversations = appPreferencesStore.isBubblesEnabledForAllConversationsFlow().first()
+
         val notification = notificationCreator.createUnregistrationNotification(
             NotificationAccountParams(
                 user = MatrixUser(userId),
                 color = color,
                 showSessionId = hasMultipleAccounts,
+                isBubblesEnabled = isBubblesEnabled,
+                isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
             )
         )
         notificationDisplayer.displayUnregistrationNotification(notification)

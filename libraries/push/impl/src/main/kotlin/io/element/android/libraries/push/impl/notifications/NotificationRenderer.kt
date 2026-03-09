@@ -16,6 +16,7 @@ import io.element.android.features.enterprise.api.EnterpriseService
 import io.element.android.libraries.core.log.logger.LoggerTag
 import io.element.android.libraries.matrix.api.user.MatrixUser
 import io.element.android.libraries.push.api.notifications.NotificationIdProvider
+import io.element.android.libraries.push.api.notifications.conversations.NotificationConversationService
 import io.element.android.libraries.push.impl.notifications.factories.NotificationAccountParams
 import io.element.android.libraries.push.impl.notifications.factories.NotificationCreator
 import io.element.android.libraries.push.impl.notifications.model.FallbackNotifiableEvent
@@ -25,6 +26,7 @@ import io.element.android.libraries.push.impl.notifications.model.NotifiableMess
 import io.element.android.libraries.push.impl.notifications.model.NotifiableRingingCallEvent
 import io.element.android.libraries.push.impl.notifications.model.SimpleNotifiableEvent
 import io.element.android.libraries.sessionstorage.api.SessionStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.services.analytics.api.AnalyticsLongRunningTransaction
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.finishLongRunningTransaction
@@ -40,12 +42,16 @@ class NotificationRenderer(
     private val enterpriseService: EnterpriseService,
     private val sessionStore: SessionStore,
     private val analyticsService: AnalyticsService,
+    private val notificationConversationService: NotificationConversationService,
 ) {
     suspend fun render(
         currentUser: MatrixUser,
         useCompleteNotificationFormat: Boolean,
         eventsToProcess: List<NotifiableEvent>,
         imageLoader: ImageLoader,
+        isBubblesEnabled: Boolean,
+        isBubblesEnabledForAllConversations: Boolean,
+        sessionPreferencesStore: SessionPreferencesStore,
     ) {
         val color = enterpriseService.brandColorsFlow(currentUser.userId).first()?.toArgb()
             ?: NotificationConfig.NOTIFICATION_ACCENT_COLOR
@@ -54,8 +60,29 @@ class NotificationRenderer(
             user = currentUser,
             color = color,
             showSessionId = numberOfAccounts > 1,
+            isBubblesEnabled = isBubblesEnabled,
+            isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
+            sessionPreferencesStore = sessionPreferencesStore,
         )
         val groupedEvents = eventsToProcess.groupByType()
+
+        // Bubbles require a published dynamic shortcut before the notification is posted.
+        // We push shortcuts here for all incoming room events when bubbles are enabled,
+        // since normally shortcuts are only pushed when the user sends a message.
+        if (isBubblesEnabled) {
+            groupedEvents.roomEvents
+                .distinctBy { it.roomId }
+                .forEach { event ->
+                    notificationConversationService.onSendMessage(
+                        sessionId = event.sessionId,
+                        roomId = event.roomId,
+                        roomName = event.roomName ?: event.roomId.value,
+                        roomIsDirect = event.roomIsDm,
+                        roomAvatarUrl = event.roomAvatarPath,
+                    )
+                }
+        }
+
         val roomNotifications = notificationDataFactory.toNotifications(groupedEvents.roomEvents, imageLoader, notificationAccountParams)
         val invitationNotifications = notificationDataFactory.toNotifications(groupedEvents.invitationEvents, notificationAccountParams)
         val simpleNotifications = notificationDataFactory.toNotifications(groupedEvents.simpleEvents, notificationAccountParams)
