@@ -119,7 +119,7 @@ fun MessageEventBubble(
                 .testTag(TestTags.messageBubble)
                 .widthIn(
                     min = MIN_BUBBLE_WIDTH,
-                    max = (constraints.maxWidth * (if (LocalIsBubble.current) 1.0f else MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO))
+                    max = (constraints.maxWidth * MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO)
                         .toInt()
                         .toDp()
                 )

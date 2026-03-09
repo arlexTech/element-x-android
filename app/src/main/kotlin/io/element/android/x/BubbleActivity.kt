@@ -38,6 +38,7 @@ import io.element.android.libraries.designsystem.utils.snackbar.LocalSnackbarDis
 import io.element.android.services.analytics.compose.LocalAnalyticsService
 import io.element.android.x.di.AppBindings
 import io.element.android.x.intent.SafeUriHandler
+import io.element.android.x.intent.BubbleSafeUriHandler
 import kotlinx.coroutines.launch
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -129,7 +130,7 @@ class BubbleActivity : NodeActivity() {
         ) {
             CompositionLocalProvider(
                 LocalSnackbarDispatcher provides appBindings.snackbarDispatcher(),
-                LocalUriHandler provides SafeUriHandler(this),
+                LocalUriHandler provides BubbleSafeUriHandler(this),
                 LocalAnalyticsService provides appBindings.analyticsService(),
                 io.element.android.libraries.architecture.appyx.LocalIsBubble provides true,
             ) {

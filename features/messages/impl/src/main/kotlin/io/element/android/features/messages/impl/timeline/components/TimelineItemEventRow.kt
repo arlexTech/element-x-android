@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.constraintlayout.compose.Dimension
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.isTraversalGroup
@@ -436,7 +437,7 @@ private fun TimelineItemEventRowContent(
     ) = createRefs()
 
         // Sender
-        if (event.showSenderInformation && (!timelineRoomInfo.isDm || isBubble)) {
+        if (event.showSenderInformation && !timelineRoomInfo.isDm) {
             MessageSenderInformation(
                 event.senderId,
                 event.senderProfile,
@@ -565,7 +566,7 @@ private fun MessageSenderInformation(
                 .testTag(TestTags.timelineItemSenderAvatar)
                 .clip(CircleShape)
                 .clickable(onClick = onClick)
-                .size(if (LocalIsBubble.current) 36.dp else 30.dp),
+                .size(30.dp),
             avatarData = senderAvatar,
             avatarType = AvatarType.User,
         )
