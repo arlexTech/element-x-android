@@ -17,6 +17,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -48,6 +49,7 @@ import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTa
 import io.element.android.libraries.androidutils.system.openUrlInExternalApp
 import io.element.android.libraries.androidutils.system.toast
 import io.element.android.libraries.architecture.NodeInputs
+import io.element.android.libraries.architecture.appyx.anyParent
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
@@ -241,8 +243,14 @@ class MessagesNode(
         ) {
             val state = presenter.present()
 
+            val isBubble = remember { anyParent { it.plugins.filterIsInstance<io.element.android.libraries.architecture.appyx.BubblePlugin>().isNotEmpty() } }
+
             BackHandler {
-                state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
+                if (isBubble) {
+                    activity.finish()
+                } else {
+                    state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
+                }
             }
 
             OnLifecycleEvent { _, event ->
@@ -253,7 +261,21 @@ class MessagesNode(
             }
             MessagesView(
                 state = state,
-                onBackClick = { state.eventSink(MessagesEvent.MarkAsFullyReadAndExit) },
+                onBackClick = {
+                    if (isBubble) {
+                        activity.finish()
+                    } else {
+                        state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
+                    }
+                },
+                isBubble = isBubble,
+                onOpenAppClick = {
+                    val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                    if (intent != null) {
+                        activity.startActivity(intent)
+                    }
+                    activity.finish()
+                },
                 onRoomDetailsClick = callback::navigateToRoomDetails,
                 onEventContentClick = { isLive, event ->
                     if (isLive) {

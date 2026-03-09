@@ -55,6 +55,10 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
+import androidx.compose.material3.IconButton
+import io.element.android.libraries.designsystem.atomic.atoms.ElementLogoAtom
+import io.element.android.libraries.designsystem.atomic.atoms.ElementLogoAtomSize
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MessagesViewTopBar(
@@ -68,12 +72,24 @@ internal fun MessagesViewTopBar(
     onRoomDetailsClick: () -> Unit,
     onJoinCallClick: () -> Unit,
     onBackClick: () -> Unit,
+    isBubble: Boolean = false,
+    onOpenAppClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
         modifier = modifier,
         navigationIcon = {
-            BackButton(onClick = onBackClick)
+            if (isBubble) {
+                IconButton(onClick = onOpenAppClick) {
+                    ElementLogoAtom(
+                        size = ElementLogoAtomSize.Medium,
+                        useBlurredShadow = false,
+                        modifier = Modifier
+                    )
+                }
+            } else {
+                BackButton(onClick = onBackClick)
+            }
         },
         title = {
             val roundedCornerShape = RoundedCornerShape(8.dp)
@@ -197,6 +213,8 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         onRoomDetailsClick = {},
         onJoinCallClick = {},
         onBackClick = {},
+        isBubble = false,
+        onOpenAppClick = {},
     )
     Column {
         AMessagesViewTopBar()
