@@ -51,6 +51,8 @@ import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.utils.time.isTalkbackActive
 
+import io.element.android.libraries.architecture.appyx.LocalIsBubble
+
 private val BUBBLE_RADIUS = 12.dp
 private val avatarRadius = AvatarSize.TimelineSender.dp / 2
 
@@ -115,7 +117,7 @@ fun MessageEventBubble(
                 .testTag(TestTags.messageBubble)
                 .widthIn(
                     min = MIN_BUBBLE_WIDTH,
-                    max = (constraints.maxWidth * MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO)
+                    max = (constraints.maxWidth * (if (LocalIsBubble.current) 1.0f else MessageEventBubbleDefaults.BUBBLE_WIDTH_RATIO))
                         .toInt()
                         .toDp()
                 )

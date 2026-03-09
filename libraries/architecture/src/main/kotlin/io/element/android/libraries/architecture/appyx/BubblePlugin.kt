@@ -8,6 +8,7 @@
 
 package io.element.android.libraries.architecture.appyx
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.bumble.appyx.core.plugin.Plugin
 
 /**
@@ -15,3 +16,8 @@ import com.bumble.appyx.core.plugin.Plugin
  * inside a Bubble context.
  */
 class BubblePlugin : Plugin
+
+/**
+ * CompositionLocal to check if we're in a Bubble context.
+ */
+val LocalIsBubble = staticCompositionLocalOf { false }

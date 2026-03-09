@@ -245,29 +245,36 @@ class MessagesNode(
 
             val isBubble = remember { anyParent { it.plugins.filterIsInstance<io.element.android.libraries.architecture.appyx.BubblePlugin>().isNotEmpty() } }
 
-            BackHandler {
-                if (isBubble) {
-                    activity.finish()
-                } else {
-                    state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
-                }
-            }
-
-            OnLifecycleEvent { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_PAUSE -> state.composerState.eventSink(MessageComposerEvent.SaveDraft)
-                    else -> Unit
-                }
-            }
-            MessagesView(
-                state = state,
-                onBackClick = {
+            CompositionLocalProvider(io.element.android.libraries.architecture.appyx.LocalIsBubble provides isBubble) {
+                BackHandler {
                     if (isBubble) {
-                        activity.finish()
+                        val intent = android.content.Intent()
+                        intent.setClassName(activity.packageName, "io.element.android.x.MinimizeBubbleActivity")
+                        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                        activity.startActivity(intent)
                     } else {
                         state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
                     }
-                },
+                }
+
+                OnLifecycleEvent { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_PAUSE -> state.composerState.eventSink(MessageComposerEvent.SaveDraft)
+                        else -> Unit
+                    }
+                }
+                MessagesView(
+                    state = state,
+                    onBackClick = {
+                        if (isBubble) {
+                            val intent = android.content.Intent()
+                            intent.setClassName(activity.packageName, "io.element.android.x.MinimizeBubbleActivity")
+                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                            activity.startActivity(intent)
+                        } else {
+                            state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
+                        }
+                    },
                 isBubble = isBubble,
                 onOpenAppClick = {
                     val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -333,4 +340,5 @@ class MessagesNode(
             }
         }
     }
+}
 }
