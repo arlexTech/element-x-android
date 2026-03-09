@@ -102,7 +102,7 @@ class DefaultNotificationConversationService(
             ),
             imageLoader = imageLoader,
             targetSize = defaultShortcutIconSize.toLong()
-        )?.let(IconCompat::createWithBitmap)
+        )?.let(IconCompat::createWithAdaptiveBitmap)
 
         val shortcutInfo = ShortcutInfoCompat.Builder(context, createShortcutId(sessionId, roomId))
             .setShortLabel(roomName)

@@ -228,7 +228,7 @@ class DefaultNotificationCreator(
                             setBubbleMetadata(
                                 NotificationCompat.BubbleMetadata.Builder(
                                     bubbleIntent,
-                                    androidx.core.graphics.drawable.IconCompat.createWithBitmap(
+                                    androidx.core.graphics.drawable.IconCompat.createWithAdaptiveBitmap(
                                         largeIcon ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
                                     )
                                 )

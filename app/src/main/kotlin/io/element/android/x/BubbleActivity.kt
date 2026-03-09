@@ -131,6 +131,7 @@ class BubbleActivity : NodeActivity() {
                 LocalSnackbarDispatcher provides appBindings.snackbarDispatcher(),
                 LocalUriHandler provides SafeUriHandler(this),
                 LocalAnalyticsService provides appBindings.analyticsService(),
+                io.element.android.libraries.architecture.appyx.LocalIsBubble provides true,
             ) {
                 Box(
                     modifier = Modifier

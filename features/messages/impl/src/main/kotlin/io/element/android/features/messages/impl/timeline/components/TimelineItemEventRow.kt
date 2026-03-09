@@ -81,6 +81,8 @@ import io.element.android.features.messages.impl.timeline.protection.TimelinePro
 import io.element.android.features.messages.impl.timeline.protection.TimelineProtectionState
 import io.element.android.features.messages.impl.timeline.protection.mustBeProtected
 import io.element.android.libraries.architecture.AsyncData
+import io.element.android.libraries.architecture.appyx.LocalIsBubble
+import io.element.android.libraries.architecture.appyx.anyParent
 import io.element.android.libraries.designsystem.colors.AvatarColorsProvider
 import io.element.android.libraries.designsystem.components.EqualWidthColumn
 import io.element.android.libraries.designsystem.components.avatar.Avatar
@@ -425,15 +427,16 @@ private fun TimelineItemEventRowContent(
             .wrapContentHeight()
             .fillMaxWidth(),
     ) {
-        val (
-            sender,
-            message,
-            reactions,
-            pinIcon,
-        ) = createRefs()
+    val isBubble = LocalIsBubble.current
+    val (
+        sender,
+        message,
+        reactions,
+        pinIcon,
+    ) = createRefs()
 
         // Sender
-        if (event.showSenderInformation && !timelineRoomInfo.isDm) {
+        if (event.showSenderInformation && (!timelineRoomInfo.isDm || isBubble)) {
             MessageSenderInformation(
                 event.senderId,
                 event.senderProfile,
@@ -455,6 +458,7 @@ private fun TimelineItemEventRowContent(
             groupPosition = event.groupPosition,
             isMine = event.isMine,
             timelineRoomInfo = timelineRoomInfo,
+            isBubble = isBubble,
         )
         MessageEventBubble(
             modifier = Modifier
@@ -468,7 +472,7 @@ private fun TimelineItemEventRowContent(
                     if (event.isMine) {
                         end.linkTo(parent.end, margin = 16.dp)
                     } else {
-                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                        val startMargin = if (timelineRoomInfo.isDm && !isBubble) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
                         start.linkTo(parent.start, margin = startMargin)
                     }
                 },
@@ -560,7 +564,8 @@ private fun MessageSenderInformation(
             modifier = Modifier
                 .testTag(TestTags.timelineItemSenderAvatar)
                 .clip(CircleShape)
-                .clickable(onClick = onClick),
+                .clickable(onClick = onClick)
+                .size(if (LocalIsBubble.current) 36.dp else 30.dp),
             avatarData = senderAvatar,
             avatarType = AvatarType.User,
         )
