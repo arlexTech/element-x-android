@@ -157,7 +157,20 @@ class DefaultNotificationDrawerManager(
      */
     override fun clearMessagesForRoom(sessionId: SessionId, roomId: RoomId) {
         android.util.Log.e("BubbleDebug", "DefaultNotificationDrawerManager: clearMessagesForRoom(roomId=$roomId)")
-        notificationDisplayer.cancelNotification(roomId.value, NotificationIdProvider.getRoomMessagesNotificationId(sessionId))
+        val notifications = activeNotificationsProvider.getAllMessageNotificationsForRoom(sessionId, roomId)
+        var hasBubble = false
+        notifications.forEach { sbn ->
+            val isBubbling = (sbn.notification.flags and android.app.Notification.FLAG_BUBBLE) != 0
+            if (isBubbling) {
+                hasBubble = true
+                android.util.Log.e("BubbleDebug", "Skipping cancel for bubbling notification: ${sbn.tag}")
+            } else {
+                notificationDisplayer.cancelNotification(sbn.tag, sbn.id)
+            }
+        }
+        if (!hasBubble) {
+            notificationDisplayer.cancelNotification(roomId.value, NotificationIdProvider.getRoomMessagesNotificationId(sessionId))
+        }
         clearSummaryNotificationIfNeeded(sessionId)
     }
 
@@ -167,7 +180,19 @@ class DefaultNotificationDrawerManager(
      */
     override fun clearMessagesForThread(sessionId: SessionId, roomId: RoomId, threadId: ThreadId) {
         val tag = NotificationCreator.messageTag(roomId, threadId)
-        notificationDisplayer.cancelNotification(tag, NotificationIdProvider.getRoomMessagesNotificationId(sessionId))
+        val notifications = activeNotificationsProvider.getMessageNotificationsForRoom(sessionId, roomId, threadId)
+        var hasBubble = false
+        notifications.forEach { sbn ->
+            val isBubbling = (sbn.notification.flags and android.app.Notification.FLAG_BUBBLE) != 0
+            if (isBubbling) {
+                hasBubble = true
+            } else {
+                notificationDisplayer.cancelNotification(sbn.tag, sbn.id)
+            }
+        }
+        if (!hasBubble) {
+            notificationDisplayer.cancelNotification(tag, NotificationIdProvider.getRoomMessagesNotificationId(sessionId))
+        }
         clearSummaryNotificationIfNeeded(sessionId)
     }
 

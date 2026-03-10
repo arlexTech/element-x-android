@@ -26,6 +26,7 @@ import io.element.android.annotations.ContributesNode
 import io.element.android.features.leaveroom.api.LeaveRoomRenderer
 import io.element.android.libraries.androidutils.system.startSharePlainTextIntent
 import io.element.android.libraries.architecture.appyx.launchMolecule
+import io.element.android.libraries.architecture.appyx.anyParent
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.core.UserId
@@ -98,7 +99,9 @@ class RoomDetailsNode(
     @Composable
     override fun View(modifier: Modifier) {
         val context = LocalContext.current
+        val activity = requireNotNull(androidx.activity.compose.LocalActivity.current)
         val state by stateFlow.collectAsState()
+        val isBubble = androidx.compose.runtime.remember { anyParent { it.plugins.filterIsInstance<io.element.android.libraries.architecture.appyx.BubblePlugin>().isNotEmpty() } }
 
         fun onShareRoom() {
             lifecycleScope.onShareRoom(context)
@@ -140,6 +143,84 @@ class RoomDetailsNode(
                     onSelectNewOwners = { callback.navigateToSelectNewOwnersWhenLeaving() },
                     modifier = Modifier
                 )
+            },
+            isBubble = isBubble,
+            onOpenAppClick = {
+                val encodedSessionId = java.net.URLEncoder.encode(room.sessionId.value, "UTF-8")
+                val encodedRoomId = java.net.URLEncoder.encode(room.roomId.value, "UTF-8")
+                val uriString = "elementx://open/$encodedSessionId/$encodedRoomId"
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uriString)).apply {
+                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                activity.startActivity(intent)
+            },
+            onOpenBubbleClick = {
+                val shortcutId = "${room.sessionId.value}-${room.roomId.value}"
+                
+                val intent = android.content.Intent().apply {
+                    setClassName(context.packageName, "io.element.android.x.BubbleActivity")
+                    action = "io.element.android.x.ACTION_OPEN_BUBBLE"
+                    putExtra("EXTRA_SESSION_ID", room.sessionId.value)
+                    putExtra("EXTRA_ROOM_ID", room.roomId.value)
+                }
+                val pendingIntent = android.app.PendingIntent.getActivity(
+                    context,
+                    room.roomId.value.hashCode(),
+                    intent,
+                    android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                )
+                
+                // Try to find an existing shortcut created by the Push Notification Library
+                val existingShortcut = androidx.core.content.pm.ShortcutManagerCompat.getDynamicShortcuts(context)
+                    .firstOrNull { it.id == shortcutId }
+                
+                val person = androidx.core.app.Person.Builder().setName(state.roomName ?: "Chat").build()
+                
+                val shortcut = existingShortcut ?: androidx.core.content.pm.ShortcutInfoCompat.Builder(context, shortcutId)
+                    .setShortLabel(state.roomName ?: "Chat")
+                    .setLongLabel(state.roomName ?: "Chat")
+                    .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, io.element.android.compound.R.drawable.ic_compound_pop_out))
+                    .setIntent(intent)
+                    .setLongLived(true)
+                    .setPerson(person)
+                    .build()
+                    
+                if (existingShortcut == null) {
+                    androidx.core.content.pm.ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
+                }
+                
+                val bubbleMetadata = androidx.core.app.NotificationCompat.BubbleMetadata.Builder(
+                    pendingIntent,
+                    shortcut.icon ?: androidx.core.graphics.drawable.IconCompat.createWithResource(context, io.element.android.compound.R.drawable.ic_compound_pop_out)
+                )
+                    .setAutoExpandBubble(true)
+                    .setSuppressNotification(true)
+                    .setDesiredHeight(600)
+                    .build()
+                    
+                val messagingStyle = androidx.core.app.NotificationCompat.MessagingStyle(person)
+                    .addMessage(context.getString(io.element.android.libraries.ui.strings.R.string.common_message), System.currentTimeMillis(), person)
+                    
+                val notification = androidx.core.app.NotificationCompat.Builder(context, "DEFAULT_NOISY_NOTIFICATION_CHANNEL_ID_V2")
+                    .setSmallIcon(io.element.android.compound.R.drawable.ic_compound_pop_out)
+                    .setContentTitle(state.roomName ?: "Chat")
+                    .setContentText(context.getString(io.element.android.libraries.ui.strings.R.string.common_message))
+                    .setShortcutId(shortcutId)
+                    .setStyle(messagingStyle)
+                    .setGroup(room.sessionId.value)
+                    .setCategory(androidx.core.app.NotificationCompat.CATEGORY_MESSAGE)
+                    .setBubbleMetadata(bubbleMetadata)
+                    .build()
+                    
+                // Use the exact ID pattern used by DefaultNotificationDrawerManager for Room Messages
+                val notificationId = io.element.android.libraries.push.api.notifications.NotificationIdProvider.getRoomMessagesNotificationId(room.sessionId)
+                androidx.core.app.NotificationManagerCompat.from(context).notify(room.roomId.value, notificationId, notification)
+                
+                val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
+                    addCategory(android.content.Intent.CATEGORY_HOME)
+                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+                context.startActivity(homeIntent)
             }
         )
     }
