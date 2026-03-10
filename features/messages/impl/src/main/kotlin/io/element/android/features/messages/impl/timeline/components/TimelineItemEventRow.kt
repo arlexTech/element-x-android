@@ -473,7 +473,7 @@ private fun TimelineItemEventRowContent(
                     if (event.isMine) {
                         end.linkTo(parent.end, margin = 16.dp)
                     } else {
-                        val startMargin = if (timelineRoomInfo.isDm && !isBubble) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
                         start.linkTo(parent.start, margin = startMargin)
                     }
                 },
