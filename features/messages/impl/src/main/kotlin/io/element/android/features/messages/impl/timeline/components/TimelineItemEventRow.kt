@@ -437,7 +437,7 @@ private fun TimelineItemEventRowContent(
     ) = createRefs()
 
         // Sender
-        if (event.showSenderInformation && (!timelineRoomInfo.isDm || isBubble)) {
+        if (event.showSenderInformation && !timelineRoomInfo.isDm) {
             MessageSenderInformation(
                 event.senderId,
                 event.senderProfile,
@@ -474,7 +474,7 @@ private fun TimelineItemEventRowContent(
                     if (event.isMine) {
                         end.linkTo(parent.end, margin = if (isBubble) 8.dp else 16.dp)
                     } else {
-                        val startMargin = if (isBubble) {
+                        val startMargin = if (isBubble && !timelineRoomInfo.isDm) {
                             8.dp + BUBBLE_INCOMING_OFFSET
                         } else {
                             if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
@@ -539,7 +539,7 @@ private fun TimelineItemEventRowContent(
                         // In design we want a offset of 6.dp compare to the bubble, so start is 22.dp (16 + 6)
                         start = when {
                             event.isMine -> if (isBubble) 14.dp else 22.dp
-                            timelineRoomInfo.isDm && !isBubble -> 22.dp
+                            timelineRoomInfo.isDm -> if (isBubble && event.isMine) 14.dp else 22.dp
                             else -> (if (isBubble) 14.dp else 22.dp) + BUBBLE_INCOMING_OFFSET
                         },
                         end = if (isBubble) 8.dp else 16.dp
