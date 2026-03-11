@@ -45,6 +45,7 @@ import io.element.android.libraries.push.impl.notifications.model.InviteNotifiab
 import io.element.android.libraries.push.impl.notifications.model.NotifiableMessageEvent
 import io.element.android.libraries.push.impl.notifications.model.SimpleNotifiableEvent
 import io.element.android.libraries.push.impl.notifications.shortcut.createShortcutId
+import io.element.android.libraries.push.impl.notifications.EMPTY_ROOM_PLACEHOLDER
 import io.element.android.libraries.ui.strings.CommonStrings
 import io.element.android.services.appnavstate.api.ROOM_OPENED_FROM_NOTIFICATION
 import io.element.android.services.toolbox.api.strings.StringProvider
@@ -139,7 +140,7 @@ class DefaultNotificationCreator(
         events: List<NotifiableMessageEvent>,
     ): Notification {
         // Build the pending intent for when the notification is clicked
-        val eventId = events.firstOrNull()?.eventId
+        val eventId = events.firstOrNull()?.eventId?.takeIf { it.value != EMPTY_ROOM_PLACEHOLDER }
         val openIntent = when {
             threadId != null -> pendingIntentFactory.createOpenThreadPendingIntent(roomInfo.sessionId, roomInfo.roomId, eventId, threadId)
             else -> pendingIntentFactory.createOpenRoomPendingIntent(
@@ -212,16 +213,16 @@ class DefaultNotificationCreator(
             .setLargeIcon(largeIcon)
             .setDeleteIntent(pendingIntentFactory.createDismissRoomPendingIntent(roomInfo.sessionId, roomInfo.roomId))
             .apply {
-                if (notificationAccountParams.isBubblesEnabled) {
+                if (notificationAccountParams.isBubblesEnabled || events.any { it.forceBubble }) {
                     val isBubbleEnabledForRoom = notificationAccountParams.sessionPreferencesStore
                         ?.isBubbleEnabledForRoom(roomInfo.roomId.value)?.first() ?: false
 
-                    if (notificationAccountParams.isBubblesEnabledForAllConversations || isBubbleEnabledForRoom) {
+                    if (notificationAccountParams.isBubblesEnabledForAllConversations || isBubbleEnabledForRoom || events.any { it.forceBubble }) {
                         // Bubbles require a separate MUTABLE PendingIntent (Android requirement)
                         val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
                             sessionId = roomInfo.sessionId,
                             roomId = roomInfo.roomId,
-                            eventId = events.firstOrNull()?.eventId,
+                            eventId = events.firstOrNull()?.eventId?.takeIf { it.value != EMPTY_ROOM_PLACEHOLDER },
                             extras = bundleOf(ROOM_OPENED_FROM_NOTIFICATION to true),
                         )
                         if (bubbleIntent != null) {
@@ -233,7 +234,7 @@ class DefaultNotificationCreator(
                                     )
                                 )
                                     .setDesiredHeightResId(R.dimen.notification_bubble_height)
-                                    .setAutoExpandBubble(true)
+                                    .setAutoExpandBubble(events.any { it.forceBubble })
                                     .setSuppressNotification(false)
                                     .build()
                             )
@@ -243,7 +244,7 @@ class DefaultNotificationCreator(
                 // Sets priority for 25 and below. For 26 and above, 'priority' is deprecated for
                 // 'importance' which is set in the NotificationChannel. The integers representing
                 // 'priority' are different from 'importance', so make sure you don't mix them.
-                if (roomInfo.shouldBing) {
+                if (roomInfo.shouldBing || events.any { it.forceBubble }) {
                     priority = NotificationCompat.PRIORITY_DEFAULT
                     setLights(notificationAccountParams.color, 500, 500)
                 } else {
@@ -284,12 +285,32 @@ class DefaultNotificationCreator(
                 )
             )
             .apply {
-                if (inviteNotifiableEvent.noisy) {
+                if (inviteNotifiableEvent.noisy || inviteNotifiableEvent.forceBubble) {
                     // Compat
                     priority = NotificationCompat.PRIORITY_DEFAULT
                     setLights(notificationAccountParams.color, 500, 500)
                 } else {
                     priority = NotificationCompat.PRIORITY_LOW
+                }
+
+                if (notificationAccountParams.isBubblesEnabled || inviteNotifiableEvent.forceBubble) {
+                    val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
+                        sessionId = inviteNotifiableEvent.sessionId,
+                        roomId = inviteNotifiableEvent.roomId,
+                        eventId = inviteNotifiableEvent.eventId,
+                    )
+                    if (bubbleIntent != null) {
+                        setBubbleMetadata(
+                            NotificationCompat.BubbleMetadata.Builder(
+                                bubbleIntent,
+                                androidx.core.graphics.drawable.IconCompat.createWithResource(context, CommonDrawables.ic_notification)
+                            )
+                                .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                                .setAutoExpandBubble(inviteNotifiableEvent.forceBubble)
+                                .setSuppressNotification(false)
+                                .build()
+                        )
+                    }
                 }
             }
             .setDeleteIntent(
@@ -326,12 +347,32 @@ class DefaultNotificationCreator(
                 )
             )
             .apply {
-                if (simpleNotifiableEvent.noisy) {
+                if (simpleNotifiableEvent.noisy || simpleNotifiableEvent.forceBubble) {
                     // Compat
                     priority = NotificationCompat.PRIORITY_DEFAULT
                     setLights(notificationAccountParams.color, 500, 500)
                 } else {
                     priority = NotificationCompat.PRIORITY_LOW
+                }
+
+                if (notificationAccountParams.isBubblesEnabled || simpleNotifiableEvent.forceBubble) {
+                    val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
+                        sessionId = simpleNotifiableEvent.sessionId,
+                        roomId = simpleNotifiableEvent.roomId,
+                        eventId = simpleNotifiableEvent.eventId,
+                    )
+                    if (bubbleIntent != null) {
+                        setBubbleMetadata(
+                            NotificationCompat.BubbleMetadata.Builder(
+                                bubbleIntent,
+                                androidx.core.graphics.drawable.IconCompat.createWithResource(context, CommonDrawables.ic_notification)
+                            )
+                                .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                                .setAutoExpandBubble(simpleNotifiableEvent.forceBubble)
+                                .setSuppressNotification(false)
+                                .build()
+                        )
+                    }
                 }
             }
             .build()

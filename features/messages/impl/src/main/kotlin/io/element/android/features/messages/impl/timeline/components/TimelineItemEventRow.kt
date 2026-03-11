@@ -437,19 +437,20 @@ private fun TimelineItemEventRowContent(
     ) = createRefs()
 
         // Sender
-        if (event.showSenderInformation && !timelineRoomInfo.isDm) {
+        if (event.showSenderInformation && (!timelineRoomInfo.isDm || isBubble)) {
             MessageSenderInformation(
                 event.senderId,
                 event.senderProfile,
                 event.senderAvatar,
                 onUserDataClick,
+                isBubble,
                 Modifier
                     .constrainAs(sender) {
                         top.linkTo(parent.top)
                         // Required for correct RTL layout
                         start.linkTo(parent.start)
                     }
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = if (isBubble) 8.dp else 16.dp)
                     .zIndex(1f),
             )
         }
@@ -471,9 +472,13 @@ private fun TimelineItemEventRowContent(
                     }
                     top.linkTo(sender.bottom, margin = topMargin)
                     if (event.isMine) {
-                        end.linkTo(parent.end, margin = 16.dp)
+                        end.linkTo(parent.end, margin = if (isBubble) 8.dp else 16.dp)
                     } else {
-                        val startMargin = if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                        val startMargin = if (isBubble) {
+                            8.dp + BUBBLE_INCOMING_OFFSET
+                        } else {
+                            if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
+                        }
                         start.linkTo(parent.start, margin = startMargin)
                     }
                 },
@@ -533,11 +538,11 @@ private fun TimelineItemEventRowContent(
                         // Note: due to the applied constraints, start is left for other's message and right for mine
                         // In design we want a offset of 6.dp compare to the bubble, so start is 22.dp (16 + 6)
                         start = when {
-                            event.isMine -> 22.dp
-                            timelineRoomInfo.isDm -> 22.dp
-                            else -> 22.dp + BUBBLE_INCOMING_OFFSET
+                            event.isMine -> if (isBubble) 14.dp else 22.dp
+                            timelineRoomInfo.isDm && !isBubble -> 22.dp
+                            else -> (if (isBubble) 14.dp else 22.dp) + BUBBLE_INCOMING_OFFSET
                         },
-                        end = 16.dp
+                        end = if (isBubble) 8.dp else 16.dp
                     )
             )
         }
@@ -550,6 +555,7 @@ private fun MessageSenderInformation(
     senderProfile: ProfileDetails,
     senderAvatar: AvatarData,
     onClick: () -> Unit,
+    isBubble: Boolean,
     modifier: Modifier = Modifier
 ) {
     val avatarColors = AvatarColorsProvider.provide(senderAvatar.id)
@@ -566,7 +572,7 @@ private fun MessageSenderInformation(
                 .testTag(TestTags.timelineItemSenderAvatar)
                 .clip(CircleShape)
                 .clickable(onClick = onClick)
-                .size(30.dp),
+                .size(if (isBubble) 36.dp else 30.dp),
             avatarData = senderAvatar,
             avatarType = AvatarType.User,
         )

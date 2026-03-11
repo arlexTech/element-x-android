@@ -21,4 +21,9 @@ interface NotificationCleaner {
 
     fun clearMembershipNotificationForSession(sessionId: SessionId)
     fun clearMembershipNotificationForRoom(sessionId: SessionId, roomId: RoomId)
+
+    /**
+     * Trigger a bubble expansion for a given room.
+     */
+    suspend fun triggerBubble(sessionId: SessionId, roomId: RoomId)
 }

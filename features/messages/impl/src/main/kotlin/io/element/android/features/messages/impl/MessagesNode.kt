@@ -276,14 +276,8 @@ class MessagesNode(
                         }
                     },
                 isBubble = isBubble,
-                onOpenAppClick = {
-                    val encodedSessionId = java.net.URLEncoder.encode(room.sessionId.value, "UTF-8")
-                    val encodedRoomId = java.net.URLEncoder.encode(room.roomId.value, "UTF-8")
-                    val uriString = "elementx://open/$encodedSessionId/$encodedRoomId"
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uriString)).apply {
-                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    }
-                    activity.startActivity(intent)
+                onLogoClick = {
+                    state.eventSink(MessagesEvent.MarkAsFullyReadAndExit)
                 },
                 onRoomDetailsClick = callback::navigateToRoomDetails,
                 onEventContentClick = { isLive, event ->

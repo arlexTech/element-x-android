@@ -28,6 +28,8 @@ import io.element.android.libraries.push.impl.notifications.model.NotifiableEven
 import io.element.android.libraries.push.impl.notifications.model.NotifiableMessageEvent
 import io.element.android.libraries.push.impl.notifications.model.NotifiableRingingCallEvent
 import io.element.android.libraries.push.impl.notifications.model.SimpleNotifiableEvent
+import io.element.android.libraries.push.impl.notifications.model.ResolvedPushEvent
+import io.element.android.libraries.push.impl.db.PushRequest
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStoreFactory
@@ -42,6 +44,8 @@ import io.element.android.services.appnavstate.api.currentThreadId
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+
+const val EMPTY_ROOM_PLACEHOLDER = "\$placeholder"
 
 /**
  * This class receives notification events as they arrive from the PushHandler calling [onNotifiableEventReceived] and
@@ -61,6 +65,7 @@ class DefaultNotificationDrawerManager(
     private val activeNotificationsProvider: ActiveNotificationsProvider,
     private val appPreferencesStore: AppPreferencesStore,
     private val sessionPreferencesStoreFactory: SessionPreferencesStoreFactory,
+    private val notifiableEventResolver: NotifiableEventResolver,
     sessionObserver: SessionObserver,
 ) : NotificationCleaner {
     // TODO EAx add a setting per user for this
@@ -156,14 +161,12 @@ class DefaultNotificationDrawerManager(
      * Can also be called when a notification for this room is dismissed by the user.
      */
     override fun clearMessagesForRoom(sessionId: SessionId, roomId: RoomId) {
-        android.util.Log.e("BubbleDebug", "DefaultNotificationDrawerManager: clearMessagesForRoom(roomId=$roomId)")
         val notifications = activeNotificationsProvider.getAllMessageNotificationsForRoom(sessionId, roomId)
         var hasBubble = false
         notifications.forEach { sbn ->
             val isBubbling = (sbn.notification.flags and android.app.Notification.FLAG_BUBBLE) != 0
             if (isBubbling) {
                 hasBubble = true
-                android.util.Log.e("BubbleDebug", "Skipping cancel for bubbling notification: ${sbn.tag}")
             } else {
                 notificationDisplayer.cancelNotification(sbn.tag, sbn.id)
             }
@@ -220,6 +223,75 @@ class DefaultNotificationDrawerManager(
         clearSummaryNotificationIfNeeded(sessionId)
     }
 
+    override suspend fun triggerBubble(sessionId: SessionId, roomId: RoomId) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val client = matrixClientProvider.getOrNull(sessionId) ?: matrixClientProvider.getOrRestore(sessionId).getOrNull()
+        if (client == null) {
+            return@withContext
+        }
+        val room = client.getJoinedRoom(roomId)
+        if (room == null) {
+            return@withContext
+        }
+        val latestEventId = room.liveTimeline.getLatestEventId().getOrNull()
+            ?: io.element.android.libraries.matrix.api.core.EventId(EMPTY_ROOM_PLACEHOLDER)
+
+        // We create a fake PushRequest to reuse NotifiableEventResolver
+        val pushRequest = PushRequest(
+            pushDate = System.currentTimeMillis(),
+            providerInfo = "fake",
+            sessionId = sessionId.value,
+            roomId = roomId.value,
+            eventId = latestEventId.value,
+            status = 0L,
+            retries = 0L
+        )
+
+        val resolveResult = notifiableEventResolver.resolveEvents(sessionId, listOf(pushRequest))
+        val resolvedEventMap = resolveResult.getOrNull()
+        if (resolvedEventMap == null) {
+            return@withContext
+        }
+        val resolvedEventResult = resolvedEventMap[pushRequest]
+        val resolvedEvent = resolvedEventResult?.getOrNull()
+
+        if (resolvedEvent != null && resolvedEvent is ResolvedPushEvent.Event) {
+            val event = resolvedEvent.notifiableEvent
+            val forcedEvent = when (event) {
+                is NotifiableMessageEvent -> event.copy(forceBubble = true)
+                is InviteNotifiableEvent -> event.copy(forceBubble = true)
+                is SimpleNotifiableEvent -> event.copy(forceBubble = true)
+                is FallbackNotifiableEvent -> event.copy(forceBubble = true)
+                is NotifiableRingingCallEvent -> event.copy(forceBubble = true)
+                else -> {
+                    event
+                }
+            }
+            renderEvents(listOf(forcedEvent))
+        } else {
+            val fallbackEvent = NotifiableMessageEvent(
+                sessionId = sessionId,
+                roomId = roomId,
+                eventId = latestEventId,
+                editedEventId = null,
+                canBeReplaced = true,
+                senderId = client.sessionId, // Use current user as fallback sender
+                noisy = false,
+                timestamp = System.currentTimeMillis(),
+                senderDisambiguatedDisplayName = room.info().name ?: "...",
+                body = "...", // Dummy body
+                imageUriString = null,
+                imageMimeType = null,
+                threadId = null,
+                roomName = room.info().name,
+                roomIsDm = room.isOneToOne,
+                roomAvatarPath = room.info().avatarUrl ?: room.info().heroes.firstOrNull()?.avatarUrl,
+                senderAvatarPath = client.userProfile.value.avatarUrl,
+                forceBubble = true
+            )
+            renderEvents(listOf(fallbackEvent))
+        }
+    }
+
     private fun clearSummaryNotificationIfNeeded(sessionId: SessionId) {
         val summaryNotification = activeNotificationsProvider.getSummaryNotification(sessionId)
         if (summaryNotification != null && activeNotificationsProvider.count(sessionId) == 1) {
@@ -227,7 +299,7 @@ class DefaultNotificationDrawerManager(
         }
     }
 
-    private suspend fun renderEvents(eventsToRender: List<NotifiableEvent>) {
+    private suspend fun renderEvents(eventsToRender: List<NotifiableEvent>) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
         // Group by sessionId
         val eventsForSessions = eventsToRender.groupBy {
             it.sessionId
@@ -264,24 +336,24 @@ class DefaultNotificationDrawerManager(
  */
 private fun AppNavigationState.shouldIgnoreEvent(event: NotifiableEvent): Boolean {
     if (!isInForeground) return false
-    return navigationState.currentSessionId() == event.sessionId &&
+    val focusedState = allNavigationStates.find { it.owner == focusedOwner } ?: navigationState
+    return focusedState.currentSessionId() == event.sessionId &&
         when (event) {
             is NotifiableRingingCallEvent -> {
                 // Never ignore ringing call notifications
-                // Note that NotifiableRingingCallEvent are not handled by DefaultNotificationDrawerManager
                 false
             }
             is FallbackNotifiableEvent -> {
                 // Ignore if the room list is currently displayed
-                navigationState is NavigationState.Session
+                focusedState is NavigationState.Session
             }
             is InviteNotifiableEvent,
             is SimpleNotifiableEvent -> {
-                event.roomId == navigationState.currentRoomId()
+                event.roomId == focusedState.currentRoomId()
             }
             is NotifiableMessageEvent -> {
-                event.roomId == navigationState.currentRoomId() &&
-                    event.threadId == navigationState.currentThreadId()
+                event.roomId == focusedState.currentRoomId() &&
+                    event.threadId == focusedState.currentThreadId()
             }
         }
 }

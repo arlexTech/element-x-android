@@ -20,7 +20,7 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.ThreadId
-import io.element.android.libraries.push.impl.intent.IntentProvider
+import io.element.android.libraries.push.api.intent.IntentProvider
 import io.element.android.x.BubbleActivity
 import io.element.android.x.MainActivity
 

@@ -69,16 +69,30 @@ class NotificationRenderer(
         // Bubbles require a published dynamic shortcut before the notification is posted.
         // We push shortcuts here for all incoming room events when bubbles are enabled,
         // since normally shortcuts are only pushed when the user sends a message.
-        if (isBubblesEnabled) {
-            groupedEvents.roomEvents
+        if (isBubblesEnabled || eventsToProcess.any { it.forceBubble }) {
+            eventsToProcess.filterIsInstance<NotifiableEvent>()
+                .filter { it is NotifiableMessageEvent || it is InviteNotifiableEvent || it is SimpleNotifiableEvent }
                 .distinctBy { it.roomId }
                 .forEach { event ->
+                    val roomName = when (event) {
+                        is NotifiableMessageEvent -> event.roomName
+                        is InviteNotifiableEvent -> event.roomName
+                        else -> null
+                    } ?: event.roomId.value
+                    val isDm = when (event) {
+                        is NotifiableMessageEvent -> event.roomIsDm
+                        else -> false
+                    }
+                    val avatarPath = when (event) {
+                        is NotifiableMessageEvent -> event.roomAvatarPath
+                        else -> null
+                    }
                     notificationConversationService.onSendMessage(
                         sessionId = event.sessionId,
                         roomId = event.roomId,
-                        roomName = event.roomName ?: event.roomId.value,
-                        roomIsDirect = event.roomIsDm,
-                        roomAvatarUrl = event.roomAvatarPath,
+                        roomName = roomName,
+                        roomIsDirect = isDm,
+                        roomAvatarUrl = avatarPath,
                     )
                 }
         }

@@ -44,6 +44,7 @@ data class NotifiableMessageEvent(
     override val isUpdated: Boolean = false,
     val type: String = EventType.MESSAGE,
     val hasMentionOrReply: Boolean = false,
+    override val forceBubble: Boolean = false,
 ) : NotifiableEvent {
     override val description: String = body ?: ""
 

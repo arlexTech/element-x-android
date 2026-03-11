@@ -39,9 +39,13 @@ class DefaultAppNavigationStateService(
     @AppCoroutineScope
     coroutineScope: CoroutineScope,
 ) : AppNavigationStateService {
+    private val navigationStates = MutableStateFlow<Map<String, NavigationState>>(emptyMap())
+    private val focusedOwner = MutableStateFlow<String?>(null)
     private val state = MutableStateFlow(
         AppNavigationState(
             navigationState = NavigationState.Root,
+            allNavigationStates = emptyList(),
+            focusedOwner = null,
             isInForeground = true,
         )
     )
@@ -54,86 +58,96 @@ class DefaultAppNavigationStateService(
                 state.getAndUpdate { it.copy(isInForeground = isInForeground) }
             }
         }
+        coroutineScope.launch {
+            kotlinx.coroutines.flow.combine(navigationStates, focusedOwner) { states, focused ->
+                states to focused
+            }.collect { (states, focused) ->
+                val allStates = states.values.toList()
+                val lastState = states[focused] ?: allStates.lastOrNull() ?: NavigationState.Root
+                state.getAndUpdate {
+                    it.copy(
+                        navigationState = lastState,
+                        allNavigationStates = allStates,
+                        focusedOwner = focused,
+                    )
+                }
+            }
+        }
     }
 
     override fun onNavigateToSession(owner: String, sessionId: SessionId) {
-        val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Navigating to session $sessionId. Current state: $currentValue")
-        val newValue: NavigationState.Session = when (currentValue) {
-            is NavigationState.Session,
-            is NavigationState.Room,
-            is NavigationState.Thread,
-            is NavigationState.Root -> NavigationState.Session(owner, sessionId)
+        Timber.tag(loggerTag.value).d("Navigating to session $sessionId (owner=$owner).")
+        focusedOwner.value = owner
+        navigationStates.getAndUpdate { current ->
+            current + (owner to NavigationState.Session(owner, sessionId))
         }
-        state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
     override fun onNavigateToRoom(owner: String, roomId: RoomId, isBubble: Boolean) {
-        val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Navigating to room $roomId (isBubble=$isBubble). Current state: $currentValue")
-        val newValue: NavigationState.Room = when (currentValue) {
-            NavigationState.Root -> return logError("onNavigateToSession()")
-            is NavigationState.Session -> NavigationState.Room(owner, roomId, currentValue, isBubble)
-            is NavigationState.Room -> NavigationState.Room(owner, roomId, currentValue.parentSession, isBubble)
-            is NavigationState.Thread -> NavigationState.Room(owner, roomId, currentValue.parentRoom.parentSession, isBubble)
+        Timber.tag(loggerTag.value).d("Navigating to room $roomId (isBubble=$isBubble, owner=$owner).")
+        focusedOwner.value = owner
+        navigationStates.getAndUpdate { current ->
+            val currentState = current[owner] ?: current.values.lastOrNull() ?: NavigationState.Root
+            val newValue: NavigationState.Room = when (currentState) {
+                NavigationState.Root -> return@getAndUpdate current // Log error if needed, but for now just skip
+                is NavigationState.Session -> NavigationState.Room(owner, roomId, currentState, isBubble)
+                is NavigationState.Room -> NavigationState.Room(owner, roomId, currentState.parentSession, isBubble)
+                is NavigationState.Thread -> NavigationState.Room(owner, roomId, currentState.parentRoom.parentSession, isBubble)
+            }
+            current + (owner to newValue)
         }
-        state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
     override fun onNavigateToThread(owner: String, threadId: ThreadId, isBubble: Boolean) {
-        val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Navigating to thread $threadId (isBubble=$isBubble). Current state: $currentValue")
-        val newValue: NavigationState.Thread = when (currentValue) {
-            NavigationState.Root -> return logError("onNavigateToSession()")
-            is NavigationState.Session -> return logError("onNavigateToRoom()")
-            is NavigationState.Room -> NavigationState.Thread(owner, threadId, currentValue, isBubble)
-            is NavigationState.Thread -> NavigationState.Thread(owner, threadId, currentValue.parentRoom, isBubble)
+        Timber.tag(loggerTag.value).d("Navigating to thread $threadId (isBubble=$isBubble, owner=$owner).")
+        focusedOwner.value = owner
+        navigationStates.getAndUpdate { current ->
+            val currentState = current[owner] ?: current.values.lastOrNull() ?: NavigationState.Root
+            val newValue: NavigationState.Thread = when (currentState) {
+                NavigationState.Root -> return@getAndUpdate current
+                is NavigationState.Session -> return@getAndUpdate current
+                is NavigationState.Room -> NavigationState.Thread(owner, threadId, currentState, isBubble)
+                is NavigationState.Thread -> NavigationState.Thread(owner, threadId, currentState.parentRoom, isBubble)
+            }
+            current + (owner to newValue)
         }
-        state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
     override fun onLeavingThread(owner: String) {
-        val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Leaving thread. Current state: $currentValue")
-        if (!currentValue.assertOwner(owner)) return
-        val newValue: NavigationState.Room = when (currentValue) {
-            NavigationState.Root -> return logError("onNavigateToSession()")
-            is NavigationState.Session -> return logError("onNavigateToRoom()")
-            is NavigationState.Room -> return logError("onNavigateToThread()")
-            is NavigationState.Thread -> currentValue.parentRoom
+        Timber.tag(loggerTag.value).d("Leaving thread (owner=$owner).")
+        navigationStates.getAndUpdate { current ->
+            val currentState = current[owner] ?: return@getAndUpdate current
+            val newValue: NavigationState.Room = when (currentState) {
+                NavigationState.Root -> return@getAndUpdate current
+                is NavigationState.Session -> return@getAndUpdate current
+                is NavigationState.Room -> return@getAndUpdate current
+                is NavigationState.Thread -> currentState.parentRoom
+            }
+            current + (owner to newValue)
         }
-        state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
     override fun onLeavingRoom(owner: String) {
-        val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Leaving room. Current state: $currentValue")
-        if (!currentValue.assertOwner(owner)) return
-        val newValue: NavigationState.Session = when (currentValue) {
-            NavigationState.Root -> return logError("onNavigateToSession()")
-            is NavigationState.Session -> return logError("onNavigateToRoom()")
-            is NavigationState.Room -> currentValue.parentSession
-            is NavigationState.Thread -> currentValue.parentRoom.parentSession
+        Timber.tag(loggerTag.value).d("Leaving room (owner=$owner).")
+        navigationStates.getAndUpdate { current ->
+            val currentState = current[owner] ?: return@getAndUpdate current
+            val newValue: NavigationState.Session = when (currentState) {
+                NavigationState.Root -> return@getAndUpdate current
+                is NavigationState.Session -> return@getAndUpdate current
+                is NavigationState.Room -> currentState.parentSession
+                is NavigationState.Thread -> currentState.parentRoom.parentSession
+            }
+            current + (owner to newValue)
         }
-        state.getAndUpdate { it.copy(navigationState = newValue) }
     }
 
     override fun onLeavingSession(owner: String) {
-        val currentValue = state.value.navigationState
-        Timber.tag(loggerTag.value).d("Leaving session. Current state: $currentValue")
-        if (!currentValue.assertOwner(owner)) return
-        state.getAndUpdate { it.copy(navigationState = NavigationState.Root) }
-    }
-
-    private fun logError(logPrefix: String) {
-        Timber.tag(loggerTag.value).w("$logPrefix must be call first.")
-    }
-
-    private fun NavigationState.assertOwner(owner: String): Boolean {
-        if (this.owner != owner) {
-            Timber.tag(loggerTag.value).d("Can't leave current state as the owner is not the same (current = ${this.owner}, new = $owner)")
-            return false
+        Timber.tag(loggerTag.value).d("Leaving session (owner=$owner).")
+        navigationStates.getAndUpdate { current ->
+            current - owner
         }
-        return true
+        if (focusedOwner.value == owner) {
+            focusedOwner.value = null
+        }
     }
 }

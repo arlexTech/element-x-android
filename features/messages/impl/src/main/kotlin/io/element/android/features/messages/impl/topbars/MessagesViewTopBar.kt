@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontStyle
@@ -45,6 +46,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.HorizontalDivider
 import io.element.android.libraries.designsystem.theme.components.Icon
+import io.element.android.libraries.designsystem.theme.components.IconButton
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.encryption.identity.IdentityState
@@ -56,7 +58,6 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 
-import androidx.compose.material3.IconButton
 import io.element.android.libraries.designsystem.atomic.atoms.ElementLogoAtom
 import io.element.android.libraries.designsystem.atomic.atoms.ElementLogoAtomSize
 
@@ -74,14 +75,20 @@ internal fun MessagesViewTopBar(
     onJoinCallClick: () -> Unit,
     onBackClick: () -> Unit,
     isBubble: Boolean = false,
-    onOpenAppClick: () -> Unit = {},
+    onLogoClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
         modifier = modifier,
         navigationIcon = {
             if (isBubble) {
-                IconButton(onClick = onOpenAppClick) {
+                val chatsDescription = stringResource(CommonStrings.screen_room_title)
+                IconButton(
+                    onClick = onLogoClick,
+                    modifier = Modifier.semantics {
+                        contentDescription = chatsDescription
+                    }
+                ) {
                     ElementLogoAtom(
                         size = ElementLogoAtomSize.Medium,
                         useBlurredShadow = false,
@@ -215,7 +222,7 @@ internal fun MessagesViewTopBarPreview() = ElementPreview {
         onJoinCallClick = {},
         onBackClick = {},
         isBubble = false,
-        onOpenAppClick = {},
+        onLogoClick = {},
     )
     Column {
         AMessagesViewTopBar()

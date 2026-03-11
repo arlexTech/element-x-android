@@ -15,7 +15,7 @@ import com.bumble.appyx.core.plugin.Plugin
  * A marker plugin used to identify that a [com.bumble.appyx.core.node.Node] is running
  * inside a Bubble context.
  */
-class BubblePlugin : Plugin
+class BubblePlugin(val roomId: String? = null) : Plugin
 
 /**
  * CompositionLocal to check if we're in a Bubble context.

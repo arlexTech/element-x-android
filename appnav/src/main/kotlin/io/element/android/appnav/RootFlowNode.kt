@@ -134,7 +134,6 @@ class RootFlowNode(
             .distinctUntilChanged()
             .drop(if (skipFirst) 1 else 0)
             .onEach { navState ->
-                android.util.Log.e("BubbleDebug", "RootFlowNode: navState update=$navState")
                 when (navState.loggedInState) {
                     is LoggedInState.LoggedIn -> {
                         if (navState.loggedInState.isTokenValid) {
@@ -142,19 +141,16 @@ class RootFlowNode(
                             if (matrixSessionCache.getOrNull(sessionId) != null) {
                                 switchToLoggedInFlow(sessionId, navState.cacheIndex)
                             } else {
-                                android.util.Log.e("BubbleDebug", "RootFlowNode: Session not in cache, restoring")
                                 tryToRestoreLatestSession(
                                     onSuccess = { sessionId -> switchToLoggedInFlow(sessionId, navState.cacheIndex) },
                                     onFailure = { switchToNotLoggedInFlow(null) }
                                 )
                             }
                         } else {
-                            android.util.Log.e("BubbleDebug", "RootFlowNode: Token invalid")
                             switchToSignedOutFlow(SessionId(navState.loggedInState.sessionId))
                         }
                     }
                     LoggedInState.NotLoggedIn -> {
-                        android.util.Log.e("BubbleDebug", "RootFlowNode: Not logged in")
                         switchToNotLoggedInFlow(null)
                     }
                 }
@@ -197,7 +193,6 @@ class RootFlowNode(
     }
 
     private fun switchToLoggedInFlow(sessionId: SessionId, navId: Int) {
-        android.util.Log.e("BubbleDebug", "RootFlowNode: switchToLoggedInFlow(sessionId=$sessionId, navId=$navId)")
         backstack.safeRoot(NavTarget.LoggedInFlow(sessionId, navId))
     }
 

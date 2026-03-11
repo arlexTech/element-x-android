@@ -30,7 +30,7 @@ import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.ui.media.ImageLoaderHolder
 import io.element.android.libraries.push.api.notifications.NotificationBitmapLoader
 import io.element.android.libraries.push.api.notifications.conversations.NotificationConversationService
-import io.element.android.libraries.push.impl.intent.IntentProvider
+import io.element.android.libraries.push.api.intent.IntentProvider
 import io.element.android.libraries.push.impl.notifications.shortcut.createShortcutId
 import io.element.android.libraries.push.impl.notifications.shortcut.filterBySession
 import io.element.android.libraries.sessionstorage.api.observer.SessionListener

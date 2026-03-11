@@ -55,11 +55,11 @@ import io.element.android.services.analytics.api.AnalyticsLongRunningTransaction
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.finishLongRunningTransaction
 import io.element.android.services.appnavstate.api.ActiveRoomsHolder
+import io.element.android.libraries.push.api.notifications.NotificationCleaner
 import io.element.android.services.appnavstate.api.AppNavigationStateService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
-import timber.log.Timber
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
@@ -76,6 +76,7 @@ class JoinedRoomLoadedFlowNode(
     private val matrixClient: MatrixClient,
     private val activeRoomsHolder: ActiveRoomsHolder,
     private val analyticsService: AnalyticsService,
+    private val notificationCleaner: NotificationCleaner,
     roomGraphFactory: RoomGraphFactory,
 ) : BaseFlowNode<JoinedRoomLoadedFlowNode.NavTarget>(
     backstack = BackStack(
@@ -108,34 +109,24 @@ class JoinedRoomLoadedFlowNode(
     init {
         lifecycle.subscribe(
             onCreate = {
-                android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnCreate start => ${inputs.room.roomId}")
-                try {
-                    val isBubble = anyParent { it.plugins.filterIsInstance<BubblePlugin>().isNotEmpty() }
-                    android.util.Log.e("BubbleDebug", "JoinedRoomLoadedFlowNode: isBubble=$isBubble")
-                    appNavigationStateService.onNavigateToRoom(id, inputs.room.roomId, isBubble)
-                    activeRoomsHolder.addRoom(inputs.room)
-                    sendMessageWatcher?.start()
-                    fetchRoomMembers()
-                    trackVisitedRoom()
-                    android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnCreate end")
-                } catch (e: Exception) {
-                    android.util.Log.e("BubbleDebug", "JoinedRoomLoadedFlowNode: Error in OnCreate", e)
+                val isBubble = anyParent { it.plugins.filterIsInstance<BubblePlugin>().isNotEmpty() }
+                appNavigationStateService.onNavigateToRoom(id, inputs.room.roomId, isBubble)
+                activeRoomsHolder.addRoom(inputs.room)
+                sendMessageWatcher?.start()
+                fetchRoomMembers()
+                trackVisitedRoom()
+                sessionCoroutineScope.launch {
+                    notificationCleaner.clearMessagesForRoom(inputs.room.sessionId, inputs.room.roomId)
                 }
             },
             onResume = {
-                android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnResume start")
                 analyticsService.finishLongRunningTransaction(LoadJoinedRoomFlow)
                 sessionCoroutineScope.launch {
-                    try {
-                        inputs.room.subscribeToSync()
-                        android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: Room subscribed to sync")
-                    } catch (e: Exception) {
-                        android.util.Log.e("BubbleDebug", "JoinedRoomLoadedFlowNode: Error subscribing to sync", e)
-                    }
+                    inputs.room.subscribeToSync()
+                    notificationCleaner.clearMessagesForRoom(inputs.room.sessionId, inputs.room.roomId)
                 }
             },
             onDestroy = {
-                android.util.Log.v("BubbleDebug", "JoinedRoomLoadedFlowNode: OnDestroy configurations=${currentActivity?.isChangingConfigurations}")
                 sendMessageWatcher?.stop()
                 // If we're just going through an activity recreation there's no need to destroy the Room object
                 // Destroying it would actually cause an issue where its methods can no longer be called

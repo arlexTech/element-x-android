@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.asStateFlow
 class FakeAppNavigationStateService(
     initialAppNavigationState: AppNavigationState = AppNavigationState(
         navigationState = NavigationState.Root,
+        allNavigationStates = emptyList(),
+        focusedOwner = null,
         isInForeground = true,
     ),
 ) : AppNavigationStateService {
@@ -33,9 +35,9 @@ class FakeAppNavigationStateService(
     override fun onNavigateToSession(owner: String, sessionId: SessionId) = Unit
     override fun onLeavingSession(owner: String) = Unit
 
-    override fun onNavigateToRoom(owner: String, roomId: RoomId) = Unit
+    override fun onNavigateToRoom(owner: String, roomId: RoomId, isBubble: Boolean) = Unit
     override fun onLeavingRoom(owner: String) = Unit
 
-    override fun onNavigateToThread(owner: String, threadId: ThreadId) = Unit
+    override fun onNavigateToThread(owner: String, threadId: ThreadId, isBubble: Boolean) = Unit
     override fun onLeavingThread(owner: String) = Unit
 }

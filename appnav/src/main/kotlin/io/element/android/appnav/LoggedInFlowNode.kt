@@ -620,11 +620,9 @@ class LoggedInFlowNode(
         initialElement: RoomNavigationTarget = RoomNavigationTarget.Root(),
         clearBackstack: Boolean = false,
     ): RoomFlowNode {
-        android.util.Log.e("BubbleDebug", "LoggedInFlowNode: attachRoom $roomIdOrAlias")
         waitForNavTargetAttached { navTarget ->
             navTarget is NavTarget.Home
         }
-        android.util.Log.e("BubbleDebug", "LoggedInFlowNode: NavTarget.Home attached, attaching child")
         attachChild<RoomFlowNode> {
             val roomNavTarget = NavTarget.Room(
                 roomIdOrAlias = roomIdOrAlias,
