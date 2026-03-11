@@ -134,7 +134,6 @@ class RootFlowNode(
             .distinctUntilChanged()
             .drop(if (skipFirst) 1 else 0)
             .onEach { navState ->
-                Timber.v("navState=$navState")
                 when (navState.loggedInState) {
                     is LoggedInState.LoggedIn -> {
                         if (navState.loggedInState.isTokenValid) {

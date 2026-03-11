@@ -45,6 +45,9 @@ internal class RoomNotificationSettingsStateProvider : PreviewParameterProvider<
             setNotificationSettingAction = setNotificationSettingAction,
             restoreDefaultAction = restoreDefaultAction,
             displayMentionsOnlyDisclaimer = displayMentionsOnlyDisclaimer,
+            isBubblesEnabled = false,
+            isBubblesEnabledForAllConversations = false,
+            isBubbleEnabledForRoom = false,
             eventSink = { },
         )
     }

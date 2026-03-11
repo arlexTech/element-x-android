@@ -23,6 +23,10 @@ import io.element.android.libraries.push.impl.notifications.fake.FakeNotificatio
 import io.element.android.libraries.push.impl.notifications.fake.FakeNotificationDisplayer
 import io.element.android.libraries.push.impl.notifications.fixtures.A_NOTIFICATION
 import io.element.android.libraries.sessionstorage.api.SessionStore
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
+import io.element.android.libraries.preferences.test.InMemoryAppPreferencesStore
+import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
 import io.element.android.libraries.sessionstorage.test.InMemorySessionStore
 import io.element.android.libraries.sessionstorage.test.aSessionData
 import io.element.android.tests.testutils.lambda.lambdaRecorder
@@ -36,13 +40,18 @@ class DefaultServiceUnregisteredHandlerTest {
         val notification = A_NOTIFICATION
         val createUnregistrationNotificationResult = lambdaRecorder<NotificationAccountParams, Notification> { notification }
         val displayUnregistrationNotificationResult = lambdaRecorder<Notification, Boolean> { true }
+        
+        val appPreferencesStore = InMemoryAppPreferencesStore(isBubblesEnabled = false, isBubblesEnabledForAllConversations = false)
+        val sessionPreferencesStore = InMemorySessionPreferencesStore()
+        
         val sut = createDefaultServiceUnregisteredHandler(
             notificationCreator = FakeNotificationCreator(
                 createUnregistrationNotificationResult = createUnregistrationNotificationResult,
             ),
             notificationDisplayer = FakeNotificationDisplayer(
                 displayUnregistrationNotificationResult = displayUnregistrationNotificationResult,
-            )
+            ),
+            appPreferencesStore = appPreferencesStore,
         )
         sut.handle(A_SESSION_ID)
         createUnregistrationNotificationResult.assertions().isCalledOnce().with(
@@ -55,6 +64,8 @@ class DefaultServiceUnregisteredHandlerTest {
                     ),
                     color = NotificationConfig.NOTIFICATION_ACCENT_COLOR,
                     showSessionId = false,
+                    isBubblesEnabled = false,
+                    isBubblesEnabledForAllConversations = false,
                 )
             )
         )
@@ -68,6 +79,10 @@ class DefaultServiceUnregisteredHandlerTest {
         val notification = A_NOTIFICATION
         val createUnregistrationNotificationResult = lambdaRecorder<NotificationAccountParams, Notification> { notification }
         val displayUnregistrationNotificationResult = lambdaRecorder<Notification, Boolean> { true }
+        
+        val appPreferencesStore = InMemoryAppPreferencesStore(isBubblesEnabled = false, isBubblesEnabledForAllConversations = false)
+        val sessionPreferencesStore = InMemorySessionPreferencesStore()
+
         val sut = createDefaultServiceUnregisteredHandler(
             enterpriseService = FakeEnterpriseService(
                 initialBrandColor = Color.Red,
@@ -83,7 +98,8 @@ class DefaultServiceUnregisteredHandlerTest {
                     aSessionData(sessionId = A_SESSION_ID.value),
                     aSessionData(sessionId = A_SESSION_ID_2.value),
                 )
-            )
+            ),
+            appPreferencesStore = appPreferencesStore,
         )
         sut.handle(A_SESSION_ID)
         createUnregistrationNotificationResult.assertions().isCalledOnce().with(
@@ -96,6 +112,8 @@ class DefaultServiceUnregisteredHandlerTest {
                     ),
                     color = Color.Red.toArgb(),
                     showSessionId = true,
+                    isBubblesEnabled = false,
+                    isBubblesEnabledForAllConversations = false,
                 )
             )
         )
@@ -109,10 +127,12 @@ class DefaultServiceUnregisteredHandlerTest {
         notificationCreator: NotificationCreator = FakeNotificationCreator(),
         notificationDisplayer: NotificationDisplayer = FakeNotificationDisplayer(),
         sessionStore: SessionStore = InMemorySessionStore(),
+        appPreferencesStore: AppPreferencesStore = InMemoryAppPreferencesStore(),
     ) = DefaultServiceUnregisteredHandler(
         enterpriseService = enterpriseService,
         notificationCreator = notificationCreator,
         notificationDisplayer = notificationDisplayer,
         sessionStore = sessionStore,
+        appPreferencesStore = appPreferencesStore,
     )
 }

@@ -51,6 +51,8 @@ import io.element.android.libraries.testtags.TestTags
 import io.element.android.libraries.testtags.testTag
 import io.element.android.libraries.ui.utils.time.isTalkbackActive
 
+import io.element.android.libraries.architecture.appyx.LocalIsBubble
+
 private val BUBBLE_RADIUS = 12.dp
 private val avatarRadius = AvatarSize.TimelineSender.dp / 2
 
@@ -80,7 +82,9 @@ fun MessageEventBubble(
 
     // Ignore state.isHighlighted for now, we need a design decision on it.
     val backgroundBubbleColor = MessageEventBubbleDefaults.backgroundBubbleColor(state.isMine)
-    val bubbleShape = remember(state) { MessageEventBubbleDefaults.shape(state.cutTopStart, state.groupPosition, state.isMine) }
+    val isBubble = LocalIsBubble.current
+    val actualCutTopStart = state.cutTopStart
+    val bubbleShape = remember(state, actualCutTopStart) { MessageEventBubbleDefaults.shape(actualCutTopStart, state.groupPosition, state.isMine) }
     val radiusPx = (avatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
     val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + avatarRadius).toPx()
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -94,7 +98,7 @@ fun MessageEventBubble(
             .drawWithContent {
                 drawRect(backgroundBubbleColor)
                 drawContent()
-                if (state.cutTopStart) {
+                if (actualCutTopStart) {
                     drawCircle(
                         color = Color.Black,
                         center = Offset(

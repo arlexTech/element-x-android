@@ -34,6 +34,10 @@ import io.element.android.features.space.api.SpaceEntryPoint
 import io.element.android.libraries.architecture.BackstackView
 import io.element.android.libraries.architecture.BaseFlowNode
 import io.element.android.libraries.architecture.NodeInputs
+import io.element.android.libraries.architecture.appyx.BubblePlugin
+import io.element.android.libraries.architecture.appyx.launchMolecule
+import io.element.android.libraries.architecture.appyx.anyParent
+import io.element.android.libraries.architecture.bindings
 import io.element.android.libraries.architecture.callback
 import io.element.android.libraries.architecture.inputs
 import io.element.android.libraries.architecture.waitForChildAttached
@@ -51,11 +55,11 @@ import io.element.android.services.analytics.api.AnalyticsLongRunningTransaction
 import io.element.android.services.analytics.api.AnalyticsService
 import io.element.android.services.analytics.api.finishLongRunningTransaction
 import io.element.android.services.appnavstate.api.ActiveRoomsHolder
+import io.element.android.libraries.push.api.notifications.NotificationCleaner
 import io.element.android.services.appnavstate.api.AppNavigationStateService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.parcelize.Parcelize
-import timber.log.Timber
 
 @ContributesNode(SessionScope::class)
 @AssistedInject
@@ -72,6 +76,7 @@ class JoinedRoomLoadedFlowNode(
     private val matrixClient: MatrixClient,
     private val activeRoomsHolder: ActiveRoomsHolder,
     private val analyticsService: AnalyticsService,
+    private val notificationCleaner: NotificationCleaner,
     roomGraphFactory: RoomGraphFactory,
 ) : BaseFlowNode<JoinedRoomLoadedFlowNode.NavTarget>(
     backstack = BackStack(
@@ -104,21 +109,24 @@ class JoinedRoomLoadedFlowNode(
     init {
         lifecycle.subscribe(
             onCreate = {
-                Timber.v("OnCreate => ${inputs.room.roomId}")
-                appNavigationStateService.onNavigateToRoom(id, inputs.room.roomId)
+                val isBubble = anyParent { it.plugins.filterIsInstance<BubblePlugin>().isNotEmpty() }
+                appNavigationStateService.onNavigateToRoom(id, inputs.room.roomId, isBubble)
                 activeRoomsHolder.addRoom(inputs.room)
                 sendMessageWatcher?.start()
                 fetchRoomMembers()
                 trackVisitedRoom()
+                sessionCoroutineScope.launch {
+                    notificationCleaner.clearMessagesForRoom(inputs.room.sessionId, inputs.room.roomId)
+                }
             },
             onResume = {
                 analyticsService.finishLongRunningTransaction(LoadJoinedRoomFlow)
                 sessionCoroutineScope.launch {
                     inputs.room.subscribeToSync()
+                    notificationCleaner.clearMessagesForRoom(inputs.room.sessionId, inputs.room.roomId)
                 }
             },
             onDestroy = {
-                Timber.v("OnDestroy")
                 sendMessageWatcher?.stop()
                 // If we're just going through an activity recreation there's no need to destroy the Room object
                 // Destroying it would actually cause an issue where its methods can no longer be called

@@ -22,9 +22,9 @@ interface AppNavigationStateService {
     fun onNavigateToSession(owner: String, sessionId: SessionId)
     fun onLeavingSession(owner: String)
 
-    fun onNavigateToRoom(owner: String, roomId: RoomId)
+    fun onNavigateToRoom(owner: String, roomId: RoomId, isBubble: Boolean = false)
     fun onLeavingRoom(owner: String)
 
-    fun onNavigateToThread(owner: String, threadId: ThreadId)
+    fun onNavigateToThread(owner: String, threadId: ThreadId, isBubble: Boolean = false)
     fun onLeavingThread(owner: String)
 }

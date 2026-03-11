@@ -164,11 +164,9 @@ class RoomFlowNode(
             .distinctUntilChanged()
             .withPreviousValue()
         currentMembershipFlow.onEach { (previousMembership, membership) ->
-            Timber.d("Room membership: $membership")
             if (membership == CurrentUserMembership.JOINED) {
                 val currentNavTarget = backstack.active?.key?.navTarget
                 if (currentNavTarget is NavTarget.JoinedRoom && currentNavTarget.roomId == roomId) {
-                    Timber.d("Already in JoinedRoom $roomId, do nothing")
                     return@onEach
                 }
                 backstack.newRoot(NavTarget.JoinedRoom(roomId))

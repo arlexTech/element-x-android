@@ -32,6 +32,9 @@ internal class UserDefinedRoomNotificationSettingsStateProvider : PreviewParamet
                 setNotificationSettingAction = AsyncAction.Uninitialized,
                 restoreDefaultAction = AsyncAction.Uninitialized,
                 displayMentionsOnlyDisclaimer = false,
+                isBubblesEnabled = false,
+                isBubblesEnabledForAllConversations = false,
+                isBubbleEnabledForRoom = false,
                 eventSink = { },
             ),
         )

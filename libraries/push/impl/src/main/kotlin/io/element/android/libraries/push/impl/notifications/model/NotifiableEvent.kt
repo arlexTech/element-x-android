@@ -26,4 +26,5 @@ sealed interface NotifiableEvent {
     val canBeReplaced: Boolean
     val isRedacted: Boolean
     val isUpdated: Boolean
+    val forceBubble: Boolean
 }

@@ -19,6 +19,7 @@ import app.cash.molecule.AndroidUiDispatcher
 import app.cash.molecule.RecompositionMode
 import app.cash.molecule.launchMolecule
 import com.bumble.appyx.core.node.Node
+import com.bumble.appyx.core.plugin.Plugin
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.StateFlow
 
@@ -32,4 +33,20 @@ fun <State> Node.launchMolecule(body: @Composable () -> State): StateFlow<State>
         currentComposer.endProviders()
         state
     }
+}
+
+/**
+ * Traverses up the node tree and returns true if any parent matches the predicate.
+ */
+fun Node.anyParent(predicate: (Node) -> Boolean): Boolean {
+    return generateSequence(parent) { it.parent }.any(predicate)
+}
+
+/**
+ * Traverses up the node tree and returns the first parent that has a plugin of type [T].
+ */
+inline fun <reified T : Plugin> Node.findParentPlugin(): T? {
+    return generateSequence(parent) { it.parent }
+        .mapNotNull { it.plugins.filterIsInstance<T>().firstOrNull() }
+        .firstOrNull()
 }

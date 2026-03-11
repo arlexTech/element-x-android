@@ -13,5 +13,7 @@ package io.element.android.services.appnavstate.api
  */
 data class AppNavigationState(
     val navigationState: NavigationState,
+    val allNavigationStates: List<NavigationState> = listOf(navigationState),
+    val focusedOwner: String? = null,
     val isInForeground: Boolean,
 )

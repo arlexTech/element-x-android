@@ -31,4 +31,5 @@ data class NotifiableRingingCallEvent(
     val rtcNotificationType: RtcNotificationType,
     val timestamp: Long,
     val expirationTimestamp: Long,
+    override val forceBubble: Boolean = false,
 ) : NotifiableEvent

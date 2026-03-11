@@ -19,7 +19,7 @@ import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
 import io.element.android.libraries.matrix.api.core.SessionId
 import io.element.android.libraries.matrix.api.core.ThreadId
-import io.element.android.libraries.push.impl.intent.IntentProvider
+import io.element.android.libraries.push.api.intent.IntentProvider
 import io.element.android.libraries.push.impl.notifications.NotificationActionIds
 import io.element.android.libraries.push.impl.notifications.NotificationBroadcastReceiver
 import io.element.android.libraries.push.impl.notifications.TestNotificationReceiver
@@ -37,20 +37,31 @@ class PendingIntentFactory(
     }
 
     fun createOpenRoomPendingIntent(sessionId: SessionId, roomId: RoomId, eventId: EventId?, extras: Bundle? = null): PendingIntent? {
-        return createRoomPendingIntent(sessionId = sessionId, roomId = roomId, eventId = eventId, threadId = null, extras = extras)
+        return createRoomPendingIntent(sessionId = sessionId, roomId = roomId, eventId = eventId, threadId = null, extras = extras, mutable = false)
+    }
+
+    fun createOpenRoomMutablePendingIntent(sessionId: SessionId, roomId: RoomId, eventId: EventId?, extras: Bundle? = null): PendingIntent? {
+        val intent = intentProvider.getBubbleRoomIntent(sessionId = sessionId, roomId = roomId, eventId = eventId, extras = extras)
+        return PendingIntent.getActivity(
+            context,
+            clock.epochMillis().toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
     }
 
     fun createOpenThreadPendingIntent(sessionId: SessionId, roomId: RoomId, eventId: EventId?, threadId: ThreadId, extras: Bundle? = null): PendingIntent? {
-        return createRoomPendingIntent(sessionId = sessionId, roomId = roomId, eventId = eventId, threadId = threadId, extras = extras)
+        return createRoomPendingIntent(sessionId = sessionId, roomId = roomId, eventId = eventId, threadId = threadId, extras = extras, mutable = false)
     }
 
-    private fun createRoomPendingIntent(sessionId: SessionId, roomId: RoomId?, eventId: EventId?, threadId: ThreadId?, extras: Bundle? = null): PendingIntent? {
+    private fun createRoomPendingIntent(sessionId: SessionId, roomId: RoomId?, eventId: EventId?, threadId: ThreadId?, extras: Bundle? = null, mutable: Boolean = false): PendingIntent? {
         val intent = intentProvider.getViewRoomIntent(sessionId = sessionId, roomId = roomId, eventId = eventId, threadId = threadId, extras = extras)
         return PendingIntent.getActivity(
             context,
             clock.epochMillis().toInt(),
             intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            if (mutable) PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+            else PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
     }
 

@@ -27,7 +27,10 @@ import io.element.android.libraries.architecture.Presenter
 import io.element.android.libraries.architecture.runCatchingUpdatingState
 import io.element.android.libraries.core.coroutine.suspendWithMinimumDuration
 import io.element.android.libraries.matrix.api.notificationsettings.NotificationSettingsService
+import io.element.android.libraries.preferences.api.store.AppPreferencesStore
+import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import androidx.compose.runtime.collectAsState
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.room.RoomNotificationSettings
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +45,8 @@ import kotlin.time.Duration.Companion.seconds
 class RoomNotificationSettingsPresenter(
     private val room: JoinedRoom,
     private val notificationSettingsService: NotificationSettingsService,
+    private val appPreferencesStore: AppPreferencesStore,
+    private val sessionPreferencesStore: SessionPreferencesStore,
     @Assisted private val showUserDefinedSettingStyle: Boolean,
 ) : Presenter<RoomNotificationSettingsState> {
     @AssistedFactory
@@ -89,6 +94,15 @@ class RoomNotificationSettingsPresenter(
             room.roomInfoFlow.collect { value = it.isEncrypted }
         }
 
+        val isBubblesEnabled by appPreferencesStore.isBubblesEnabledFlow()
+            .collectAsState(initial = false)
+
+        val isBubblesEnabledForAllConversations by appPreferencesStore.isBubblesEnabledForAllConversationsFlow()
+            .collectAsState(initial = false)
+
+        val isBubbleEnabledForRoom by sessionPreferencesStore.isBubbleEnabledForRoom(room.roomId.value)
+            .collectAsState(initial = false)
+
         LaunchedEffect(Unit) {
             getDefaultRoomNotificationMode(defaultRoomNotificationMode)
             fetchNotificationSettings(pendingRoomNotificationMode, roomNotificationSettings)
@@ -123,6 +137,11 @@ class RoomNotificationSettingsPresenter(
                 RoomNotificationSettingsEvent.ClearRestoreDefaultError -> {
                     restoreDefaultAction.value = AsyncAction.Uninitialized
                 }
+                is RoomNotificationSettingsEvent.SetBubbleEnabled -> {
+                    localCoroutineScope.launch {
+                        sessionPreferencesStore.setBubbleEnabledForRoom(room.roomId.value, event.enabled)
+                    }
+                }
             }
         }
 
@@ -136,6 +155,9 @@ class RoomNotificationSettingsPresenter(
             setNotificationSettingAction = setNotificationSettingAction.value,
             restoreDefaultAction = restoreDefaultAction.value,
             displayMentionsOnlyDisclaimer = shouldDisplayMentionsOnlyDisclaimer,
+            isBubblesEnabled = isBubblesEnabled,
+            isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
+            isBubbleEnabledForRoom = isBubbleEnabledForRoom,
             eventSink = ::handleEvent,
         )
     }

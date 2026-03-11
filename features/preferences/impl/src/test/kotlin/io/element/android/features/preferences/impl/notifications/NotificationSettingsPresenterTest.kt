@@ -365,6 +365,7 @@ class NotificationSettingsPresenterTest {
             matrixClient = matrixClient,
             pushService = pushService,
             systemNotificationsEnabledProvider = FakeSystemNotificationsEnabledProvider(),
+            appPreferencesStore = InMemoryAppPreferencesStore(),
             fullScreenIntentPermissionsPresenter = { fullScreenIntentPermissionsStateLambda() },
             sessionCoroutineScope = backgroundScope,
         )

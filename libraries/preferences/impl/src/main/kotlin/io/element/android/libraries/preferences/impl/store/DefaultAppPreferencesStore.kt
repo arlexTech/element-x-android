@@ -30,6 +30,8 @@ private val hideInviteAvatarsKey = booleanPreferencesKey("hideInviteAvatars")
 private val timelineMediaPreviewValueKey = stringPreferencesKey("timelineMediaPreviewValue")
 private val logLevelKey = stringPreferencesKey("logLevel")
 private val traceLogPacksKey = stringPreferencesKey("traceLogPacks")
+private val bubblesEnabledKey = booleanPreferencesKey("bubblesEnabled")
+private val bubblesEnabledForAllConversationsKey = booleanPreferencesKey("bubblesEnabledForAllConversations")
 
 @ContributesBinding(AppScope::class)
 class DefaultAppPreferencesStore(
@@ -141,6 +143,30 @@ class DefaultAppPreferencesStore(
                 ?.mapNotNull { value -> TraceLogPack.entries.find { it.key == value } }
                 ?.toSet()
                 ?: emptySet()
+        }
+    }
+
+    override suspend fun setBubblesEnabled(enabled: Boolean) {
+        store.edit { prefs ->
+            prefs[bubblesEnabledKey] = enabled
+        }
+    }
+
+    override fun isBubblesEnabledFlow(): Flow<Boolean> {
+        return store.data.map { prefs ->
+            prefs[bubblesEnabledKey] ?: false
+        }
+    }
+
+    override suspend fun setBubblesEnabledForAllConversations(enabled: Boolean) {
+        store.edit { prefs ->
+            prefs[bubblesEnabledForAllConversationsKey] = enabled
+        }
+    }
+
+    override fun isBubblesEnabledForAllConversationsFlow(): Flow<Boolean> {
+        return store.data.map { prefs ->
+            prefs[bubblesEnabledForAllConversationsKey] ?: false
         }
     }
 

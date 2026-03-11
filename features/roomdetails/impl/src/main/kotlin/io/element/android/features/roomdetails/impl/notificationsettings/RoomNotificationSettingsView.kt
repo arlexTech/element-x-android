@@ -46,6 +46,7 @@ fun RoomNotificationSettingsView(
     if (state.showUserDefinedSettingStyle) {
         UserDefinedRoomNotificationSettingsView(
             state = state,
+            onShowGlobalNotifications = onShowGlobalNotifications,
             modifier = modifier,
             onBackClick = onBackClick,
         )
@@ -140,6 +141,41 @@ private fun RoomSpecificNotificationSettingsView(
                         onSelectOption = {
                             state.eventSink(RoomNotificationSettingsEvent.ChangeRoomNotificationMode(it.mode))
                         },
+                    )
+                }
+            }
+
+            PreferenceCategory {
+                if (state.isBubblesEnabled && !state.isBubblesEnabledForAllConversations) {
+                    PreferenceSwitch(
+                        isChecked = state.isBubbleEnabledForRoom,
+                        onCheckedChange = {
+                            state.eventSink(RoomNotificationSettingsEvent.SetBubbleEnabled(it))
+                        },
+                        title = stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                        enabled = true
+                    )
+                } else {
+                    val supportingTextRes = if (!state.isBubblesEnabled) {
+                        R.string.screen_room_notification_settings_bubbles_disabled_globally
+                    } else {
+                        R.string.screen_room_notification_settings_bubbles_enabled_globally
+                    }
+                    io.element.android.libraries.designsystem.theme.components.ListItem(
+                        headlineContent = {
+                            io.element.android.libraries.designsystem.theme.components.Text(
+                                stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                                style = ElementTheme.typography.fontBodyLgRegular
+                            )
+                        },
+                        supportingContent = {
+                            io.element.android.libraries.designsystem.theme.components.Text(
+                                stringResource(id = supportingTextRes),
+                                style = ElementTheme.typography.fontBodyMdRegular
+                            )
+                        },
+                        onClick = onShowGlobalNotifications,
+                        enabled = true
                     )
                 }
             }

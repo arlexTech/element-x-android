@@ -92,6 +92,8 @@ fun HomeTopBar(
     displayFilters: Boolean,
     filtersState: RoomListFiltersState,
     spaceFiltersState: SpaceFiltersState,
+    isBubble: Boolean = false,
+    onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier) {
@@ -124,12 +126,21 @@ fun HomeTopBar(
                 )
             },
             navigationIcon = {
-                NavigationIcon(
-                    currentUserAndNeighbors = currentUserAndNeighbors,
-                    showAvatarIndicator = showAvatarIndicator,
-                    onAccountSwitch = onAccountSwitch,
-                    onClick = onOpenSettings,
-                )
+                if (isBubble && onBackClick != null) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = CompoundIcons.ArrowLeft(),
+                            contentDescription = stringResource(CommonStrings.action_back),
+                        )
+                    }
+                } else {
+                    NavigationIcon(
+                        currentUserAndNeighbors = currentUserAndNeighbors,
+                        showAvatarIndicator = showAvatarIndicator,
+                        onAccountSwitch = onAccountSwitch,
+                        onClick = onOpenSettings,
+                    )
+                }
             },
             actions = {
                 if (selectedNavigationItem == HomeNavigationBarItem.Chats) {

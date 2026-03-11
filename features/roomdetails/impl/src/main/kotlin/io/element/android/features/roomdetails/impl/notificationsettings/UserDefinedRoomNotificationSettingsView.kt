@@ -27,6 +27,7 @@ import io.element.android.libraries.designsystem.preview.ElementPreview
 import io.element.android.libraries.designsystem.preview.PreviewsDayNight
 import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.ListItemStyle
+import io.element.android.libraries.designsystem.components.preferences.PreferenceCategory
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
@@ -34,6 +35,7 @@ import io.element.android.libraries.designsystem.theme.components.TopAppBar
 @Composable
 fun UserDefinedRoomNotificationSettingsView(
     state: RoomNotificationSettingsState,
+    onShowGlobalNotifications: () -> Unit,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,6 +65,40 @@ fun UserDefinedRoomNotificationSettingsView(
                         state.eventSink(RoomNotificationSettingsEvent.ChangeRoomNotificationMode(it.mode))
                     },
                 )
+            }
+            PreferenceCategory {
+                if (state.isBubblesEnabled && !state.isBubblesEnabledForAllConversations) {
+                    io.element.android.libraries.designsystem.components.preferences.PreferenceSwitch(
+                        isChecked = state.isBubbleEnabledForRoom,
+                        onCheckedChange = {
+                            state.eventSink(RoomNotificationSettingsEvent.SetBubbleEnabled(it))
+                        },
+                        title = stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                        enabled = true
+                    )
+                } else {
+                    val supportingTextRes = if (!state.isBubblesEnabled) {
+                        R.string.screen_room_notification_settings_bubbles_disabled_globally
+                    } else {
+                        R.string.screen_room_notification_settings_bubbles_enabled_globally
+                    }
+                    ListItem(
+                        headlineContent = {
+                            Text(
+                                stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                                style = io.element.android.compound.theme.ElementTheme.typography.fontBodyLgRegular
+                            )
+                        },
+                        supportingContent = {
+                            Text(
+                                stringResource(id = supportingTextRes),
+                                style = io.element.android.compound.theme.ElementTheme.typography.fontBodyMdRegular
+                            )
+                        },
+                        onClick = onShowGlobalNotifications,
+                        enabled = true
+                    )
+                }
             }
 
             ListItem(
@@ -109,6 +145,7 @@ internal fun UserDefinedRoomNotificationSettingsViewPreview(
 ) = ElementPreview {
     UserDefinedRoomNotificationSettingsView(
         state = state,
+        onShowGlobalNotifications = {},
         onBackClick = {},
     )
 }

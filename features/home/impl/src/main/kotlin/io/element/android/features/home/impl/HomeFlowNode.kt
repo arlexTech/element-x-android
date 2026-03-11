@@ -71,6 +71,12 @@ import timber.log.Timber
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
+import io.element.android.libraries.push.api.intent.IntentProvider
+import io.element.android.libraries.push.api.notifications.NotificationCleaner
+import io.element.android.libraries.architecture.appyx.BubblePlugin
+import io.element.android.libraries.architecture.appyx.findParentPlugin
+import io.element.android.libraries.matrix.api.core.SessionId
+
 @ContributesNode(SessionScope::class)
 @AssistedInject
 class HomeFlowNode(
@@ -86,6 +92,8 @@ class HomeFlowNode(
     private val declineInviteAndBlockUserEntryPoint: DeclineInviteAndBlockEntryPoint,
     private val changeRoomMemberRolesEntryPoint: ChangeRoomMemberRolesEntryPoint,
     private val leaveRoomRenderer: LeaveRoomRenderer,
+    private val intentProvider: IntentProvider,
+    private val notificationCleaner: NotificationCleaner,
     @SessionCoroutineScope private val sessionCoroutineScope: CoroutineScope,
 ) : BaseFlowNode<HomeFlowNode.NavTarget>(
     backstack = BackStack(
@@ -166,6 +174,7 @@ class HomeFlowNode(
         return node(buildContext) { modifier ->
             val state by stateFlow.collectAsState()
             val activity = requireNotNull(LocalActivity.current)
+            val bubblePlugin = findParentPlugin<BubblePlugin>()
 
             val loadingJoinedRoomJob = remember { mutableStateOf<AsyncData<Job>>(AsyncData.Uninitialized) }
             if (loadingJoinedRoomJob.value.isLoading()) {
@@ -182,6 +191,16 @@ class HomeFlowNode(
             fun navigateToRoom(
                 roomId: RoomId,
             ) {
+                if (bubblePlugin != null && bubblePlugin.roomId != null && bubblePlugin.roomId != roomId.value) {
+                    sessionCoroutineScope.launch {
+                        notificationCleaner.triggerBubble(matrixClient.sessionId, roomId)
+                        delay(50.milliseconds)
+                        // Revert to original room in this bubble to avoid staying on the list
+                        callback.navigateToRoom(RoomId(bubblePlugin.roomId!!), null)
+                    }
+                    return
+                }
+
                 if (!loadingJoinedRoomJob.value.isUninitialized()) {
                     Timber.w("Already loading a room, ignoring navigateToRoom for $roomId")
                     return
@@ -227,6 +246,9 @@ class HomeFlowNode(
                 onMenuActionClick = { onMenuActionClick(activity, it) },
                 onReportRoomClick = ::navigateToReportRoom,
                 onDeclineInviteAndBlockUser = ::navigateToDeclineInviteAndBlockUser,
+                onBackClick = if (bubblePlugin != null && bubblePlugin.roomId != null) {
+                    { navigateToRoom(RoomId(bubblePlugin.roomId!!)) }
+                } else null,
                 modifier = modifier,
                 acceptDeclineInviteView = {
                     acceptDeclineInviteView.Render(

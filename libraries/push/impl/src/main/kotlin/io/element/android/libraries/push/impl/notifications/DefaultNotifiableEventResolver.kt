@@ -108,7 +108,9 @@ class DefaultNotifiableEventResolver(
             }
 
         // TODO this notificationData is not always valid at the moment, sometimes the Rust SDK can't fetch the matching event
-        val notificationsResult = client.notificationService.getNotifications(ids)
+        val notificationsResult = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            client.notificationService.getNotifications(ids)
+        }
 
         if (notificationsResult.isFailure) {
             val exception = notificationsResult.exceptionOrNull()
@@ -449,6 +451,7 @@ internal fun buildNotifiableMessageEvent(
     isUpdated: Boolean = false,
     type: String = EventType.MESSAGE,
     hasMentionOrReply: Boolean = false,
+    forceBubble: Boolean = false,
 ) = NotifiableMessageEvent(
     sessionId = sessionId,
     senderId = senderId,
@@ -474,4 +477,5 @@ internal fun buildNotifiableMessageEvent(
     isUpdated = isUpdated,
     type = type,
     hasMentionOrReply = hasMentionOrReply,
+    forceBubble = forceBubble,
 )

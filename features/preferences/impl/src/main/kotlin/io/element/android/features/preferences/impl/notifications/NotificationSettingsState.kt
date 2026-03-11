@@ -43,6 +43,8 @@ data class NotificationSettingsState(
     data class AppSettings(
         val systemNotificationsEnabled: Boolean,
         val appNotificationsEnabled: Boolean,
+        val isBubblesEnabled: Boolean,
+        val isBubblesEnabledForAllConversations: Boolean,
     )
 
     /**

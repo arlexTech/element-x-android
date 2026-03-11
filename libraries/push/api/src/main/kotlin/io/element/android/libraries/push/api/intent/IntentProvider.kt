@@ -6,7 +6,7 @@
  * Please see LICENSE files in the repository root for full details.
  */
 
-package io.element.android.libraries.push.impl.intent
+package io.element.android.libraries.push.api.intent
 
 import android.content.Intent
 import android.os.Bundle
@@ -26,4 +26,17 @@ interface IntentProvider {
         eventId: EventId?,
         extras: Bundle? = null,
     ): Intent
+
+    /**
+     * Provide an intent specifically for a bubble notification.
+     * Bubbles cannot embed an activity with launchMode="singleTask", so this should target
+     * a dedicated BubbleActivity that acts as a trampoline.
+     * The default implementation falls back to [getViewRoomIntent].
+     */
+    fun getBubbleRoomIntent(
+        sessionId: SessionId,
+        roomId: RoomId,
+        eventId: EventId?,
+        extras: Bundle? = null,
+    ): Intent = getViewRoomIntent(sessionId, roomId, null, eventId, extras)
 }

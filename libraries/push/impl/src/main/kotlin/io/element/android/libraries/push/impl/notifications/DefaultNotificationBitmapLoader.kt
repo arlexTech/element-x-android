@@ -11,6 +11,8 @@ package io.element.android.libraries.push.impl.notifications
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.os.Build
 import androidx.core.graphics.drawable.IconCompat
 import coil3.ImageLoader
@@ -46,7 +48,7 @@ class DefaultNotificationBitmapLoader(
                 avatarData = avatarData,
                 imageLoader = imageLoader,
                 targetSize = targetSize,
-            )
+            )?.toAdaptiveIconBitmap()
         } catch (e: Throwable) {
             Timber.e(e, "Unable to load room bitmap")
             null
@@ -80,7 +82,7 @@ class DefaultNotificationBitmapLoader(
     private suspend fun loadBitmap(
         avatarData: AvatarData,
         imageLoader: ImageLoader,
-        targetSize: Long
+        targetSize: Long,
     ): Bitmap? {
         val path = avatarData.url
         val data = if (path != null) {
@@ -101,4 +103,27 @@ class DefaultNotificationBitmapLoader(
             .build()
         return imageLoader.execute(imageRequest).image?.toBitmap()
     }
+
+    /**
+     * Pad a bitmap for use with [IconCompat.createWithAdaptiveBitmap].
+     *
+     * Adaptive icons use a 108dp canvas but only the inner 72dp circle is visible
+     * (ratio ≈ 0.667). Without padding the system zooms/crops the image.
+     * This places the original image centered on a larger transparent canvas
+     * so it fits neatly inside the visible safe zone.
+     */
+    private fun Bitmap.toAdaptiveIconBitmap(): Bitmap {
+        // Adaptive icon safe-zone ratio: visible area is 72/108 of total canvas
+        val scale = 72f / 108f
+        val newSize = (maxOf(width, height) / scale).toInt()
+        val result = Bitmap.createBitmap(newSize, newSize, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(result)
+        // Transparent background — the system circle mask will clip it
+        canvas.drawColor(Color.TRANSPARENT)
+        val left = (newSize - width) / 2f
+        val top = (newSize - height) / 2f
+        canvas.drawBitmap(this, left, top, null)
+        return result
+    }
 }
+

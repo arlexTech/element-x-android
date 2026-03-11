@@ -36,6 +36,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import io.element.android.libraries.preferences.test.InMemorySessionPreferencesStore
+import io.element.android.libraries.push.api.notifications.conversations.NotificationConversationService
+import io.element.android.libraries.push.test.notifications.conversations.FakeNotificationConversationService
 
 private const val MY_USER_DISPLAY_NAME = "display-name"
 private const val MY_USER_AVATAR_URL = "avatar-url"
@@ -114,6 +117,9 @@ class NotificationRendererTest {
             useCompleteNotificationFormat = USE_COMPLETE_NOTIFICATION_FORMAT,
             eventsToProcess = events,
             imageLoader = FakeImageLoader(),
+            isBubblesEnabled = false,
+            isBubblesEnabledForAllConversations = false,
+            sessionPreferencesStore = InMemorySessionPreferencesStore(),
         )
     }
 }
@@ -124,10 +130,12 @@ fun createNotificationRenderer(
     enterpriseService: EnterpriseService = FakeEnterpriseService(),
     sessionStore: SessionStore = InMemorySessionStore(),
     analyticsService: FakeAnalyticsService = FakeAnalyticsService(),
+    notificationConversationService: NotificationConversationService = FakeNotificationConversationService(),
 ) = NotificationRenderer(
     notificationDisplayer = notificationDisplayer,
     notificationDataFactory = notificationDataFactory,
     enterpriseService = enterpriseService,
     sessionStore = sessionStore,
     analyticsService = analyticsService,
+    notificationConversationService = notificationConversationService,
 )

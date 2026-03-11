@@ -85,6 +85,7 @@ fun HomeView(
     onReportRoomClick: (roomId: RoomId) -> Unit,
     onDeclineInviteAndBlockUser: (roomSummary: RoomListRoomSummary) -> Unit,
     acceptDeclineInviteView: @Composable () -> Unit,
+    onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     leaveRoomView: @Composable () -> Unit,
 ) {
@@ -121,6 +122,7 @@ fun HomeView(
             onStartChatClick = { if (firstThrottler.canHandle()) onStartChatClick() },
             onCreateSpaceClick = { if (firstThrottler.canHandle()) onCreateSpaceClick() },
             onMenuActionClick = onMenuActionClick,
+            onBackClick = onBackClick,
         )
         // This overlaid view will only be visible when state.displaySearchResults is true
         RoomListSearchView(
@@ -147,6 +149,7 @@ private fun HomeScaffold(
     onStartChatClick: () -> Unit,
     onCreateSpaceClick: () -> Unit,
     onMenuActionClick: (RoomListMenuAction) -> Unit,
+    onBackClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     fun onRoomClick(room: RoomListRoomSummary) {
@@ -158,14 +161,23 @@ private fun HomeScaffold(
     val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     val roomListState: RoomListState = state.roomListState
 
-    BackHandler(enabled = state.isBackHandlerEnabled) {
-        if (state.currentHomeNavigationBarItem != HomeNavigationBarItem.Chats) {
-            state.eventSink(HomeEvent.SelectHomeNavigationBarItem(HomeNavigationBarItem.Chats))
-        } else {
-            val spaceFiltersState = state.roomListState.spaceFiltersState
-            if (spaceFiltersState is SpaceFiltersState.Selected) {
-                spaceFiltersState.eventSink(SpaceFiltersEvent.Selected.ClearSelection)
+    val isBubble = io.element.android.libraries.architecture.appyx.LocalIsBubble.current
+    val activity = androidx.activity.compose.LocalActivity.current
+    BackHandler(enabled = state.isBackHandlerEnabled || isBubble) {
+        if (state.isBackHandlerEnabled) {
+            if (state.currentHomeNavigationBarItem != HomeNavigationBarItem.Chats) {
+                state.eventSink(HomeEvent.SelectHomeNavigationBarItem(HomeNavigationBarItem.Chats))
+            } else {
+                val spaceFiltersState = state.roomListState.spaceFiltersState
+                if (spaceFiltersState is SpaceFiltersState.Selected) {
+                    spaceFiltersState.eventSink(SpaceFiltersEvent.Selected.ClearSelection)
+                }
             }
+        } else if (isBubble && activity != null) {
+            val intent = android.content.Intent()
+            intent.setClassName(activity.packageName, "io.element.android.x.MinimizeBubbleActivity")
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            activity.startActivity(intent)
         }
     }
 
@@ -192,6 +204,8 @@ private fun HomeScaffold(
                 filtersState = roomListState.filtersState,
                 spaceFiltersState = roomListState.spaceFiltersState,
                 canReportBug = state.canReportBug,
+                isBubble = isBubble,
+                onBackClick = onBackClick,
                 modifier = Modifier.hazeEffect(
                     state = hazeState,
                     style = HazeMaterials.thick(),
