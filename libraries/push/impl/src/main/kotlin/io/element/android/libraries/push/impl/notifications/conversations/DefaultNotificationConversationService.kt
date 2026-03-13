@@ -11,6 +11,8 @@ package io.element.android.libraries.push.impl.notifications.conversations
 import android.content.Context
 import android.content.pm.ShortcutInfo
 import android.os.Build
+import androidx.core.app.Person
+import androidx.core.content.LocusIdCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
@@ -104,12 +106,21 @@ class DefaultNotificationConversationService(
             targetSize = defaultShortcutIconSize.toLong()
         )?.let(IconCompat::createWithAdaptiveBitmap)
 
-        val shortcutInfo = ShortcutInfoCompat.Builder(context, createShortcutId(sessionId, roomId))
+        val shortcutId = createShortcutId(sessionId, roomId)
+        val person = Person.Builder()
+            .setName(roomName)
+            .setIcon(icon)
+            .setKey(shortcutId)
+            .build()
+
+        val shortcutInfo = ShortcutInfoCompat.Builder(context, shortcutId)
             .setShortLabel(roomName)
             .setIcon(icon)
-            .setIntent(intentProvider.getViewRoomIntent(sessionId, roomId, threadId = null, eventId = null))
+            .setIntent(intentProvider.getBubbleRoomIntent(sessionId, roomId, eventId = null))
             .setCategories(categories)
             .setLongLived(true)
+            .setLocusId(LocusIdCompat(roomId.value))
+            .setPerson(person)
             .let {
                 when (roomIsDirect) {
                     true -> it.addCapabilityBinding("actions.intent.SEND_MESSAGE")

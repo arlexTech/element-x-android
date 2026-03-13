@@ -12,6 +12,7 @@ import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsState
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.pushproviders.api.Distributor
 import kotlinx.collections.immutable.ImmutableList
 
@@ -23,6 +24,7 @@ data class NotificationSettingsState(
     val availablePushDistributors: ImmutableList<Distributor>,
     val showChangePushProviderDialog: Boolean,
     val fullScreenIntentPermissionsState: FullScreenIntentPermissionsState,
+    val snackbarMessage: SnackbarMessage?,
     val eventSink: (NotificationSettingsEvents) -> Unit,
 ) {
     sealed interface MatrixSettings {
@@ -45,6 +47,7 @@ data class NotificationSettingsState(
         val appNotificationsEnabled: Boolean,
         val isBubblesEnabled: Boolean,
         val isBubblesEnabledForAllConversations: Boolean,
+        val isBubblesAllowedInSettings: Boolean,
     )
 
     /**

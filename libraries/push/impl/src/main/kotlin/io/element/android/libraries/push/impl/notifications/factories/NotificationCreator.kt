@@ -15,6 +15,7 @@ import androidx.annotation.ColorInt
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationCompat.MessagingStyle
 import androidx.core.app.Person
+import androidx.core.content.LocusIdCompat
 import androidx.core.os.bundleOf
 import coil3.ImageLoader
 import dev.zacsweers.metro.AppScope
@@ -186,8 +187,8 @@ class DefaultNotificationCreator(
                 .setGroupSummary(false)
                 // In order to avoid notification making sound twice (due to the summary notification)
                 .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
-                // Remove notification after opening it or using an action
                 .setAutoCancel(true)
+                .setLocusId(LocusIdCompat(roomInfo.roomId.value))
         }
         val messagingStyle = existingNotification?.let {
             MessagingStyle.extractMessagingStyleFromNotification(it)
@@ -218,34 +219,21 @@ class DefaultNotificationCreator(
                         ?.isBubbleEnabledForRoom(roomInfo.roomId.value)?.first() ?: false
 
                     if (notificationAccountParams.isBubblesEnabledForAllConversations || isBubbleEnabledForRoom || events.any { it.forceBubble }) {
-                        // Bubbles require a separate MUTABLE PendingIntent (Android requirement)
-                        val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
-                            sessionId = roomInfo.sessionId,
-                            roomId = roomInfo.roomId,
-                            eventId = events.firstOrNull()?.eventId?.takeIf { it.value != EMPTY_ROOM_PLACEHOLDER },
-                            extras = bundleOf(ROOM_OPENED_FROM_NOTIFICATION to true),
+                        val shortcutId = createShortcutId(roomInfo.sessionId, roomInfo.roomId)
+                        setBubbleMetadata(
+                            NotificationCompat.BubbleMetadata.Builder(shortcutId)
+                                .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                                .setAutoExpandBubble(events.any { it.forceBubble })
+                                .setSuppressNotification(false)
+                                .build()
                         )
-                        if (bubbleIntent != null) {
-                            setBubbleMetadata(
-                                NotificationCompat.BubbleMetadata.Builder(
-                                    bubbleIntent,
-                                    androidx.core.graphics.drawable.IconCompat.createWithAdaptiveBitmap(
-                                        largeIcon ?: Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-                                    )
-                                )
-                                    .setDesiredHeightResId(R.dimen.notification_bubble_height)
-                                    .setAutoExpandBubble(events.any { it.forceBubble })
-                                    .setSuppressNotification(false)
-                                    .build()
-                            )
-                        }
                     }
                 }
                 // Sets priority for 25 and below. For 26 and above, 'priority' is deprecated for
                 // 'importance' which is set in the NotificationChannel. The integers representing
                 // 'priority' are different from 'importance', so make sure you don't mix them.
                 if (roomInfo.shouldBing || events.any { it.forceBubble }) {
-                    priority = NotificationCompat.PRIORITY_DEFAULT
+                    priority = NotificationCompat.PRIORITY_MAX
                     setLights(notificationAccountParams.color, 500, 500)
                 } else {
                     priority = NotificationCompat.PRIORITY_LOW
@@ -294,23 +282,14 @@ class DefaultNotificationCreator(
                 }
 
                 if (notificationAccountParams.isBubblesEnabled || inviteNotifiableEvent.forceBubble) {
-                    val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
-                        sessionId = inviteNotifiableEvent.sessionId,
-                        roomId = inviteNotifiableEvent.roomId,
-                        eventId = inviteNotifiableEvent.eventId,
+                    val shortcutId = createShortcutId(inviteNotifiableEvent.sessionId, inviteNotifiableEvent.roomId)
+                    setBubbleMetadata(
+                        NotificationCompat.BubbleMetadata.Builder(shortcutId)
+                            .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                            .setAutoExpandBubble(inviteNotifiableEvent.forceBubble)
+                            .setSuppressNotification(false)
+                            .build()
                     )
-                    if (bubbleIntent != null) {
-                        setBubbleMetadata(
-                            NotificationCompat.BubbleMetadata.Builder(
-                                bubbleIntent,
-                                androidx.core.graphics.drawable.IconCompat.createWithResource(context, CommonDrawables.ic_notification)
-                            )
-                                .setDesiredHeightResId(R.dimen.notification_bubble_height)
-                                .setAutoExpandBubble(inviteNotifiableEvent.forceBubble)
-                                .setSuppressNotification(false)
-                                .build()
-                        )
-                    }
                 }
             }
             .setDeleteIntent(
@@ -356,23 +335,14 @@ class DefaultNotificationCreator(
                 }
 
                 if (notificationAccountParams.isBubblesEnabled || simpleNotifiableEvent.forceBubble) {
-                    val bubbleIntent = pendingIntentFactory.createOpenRoomMutablePendingIntent(
-                        sessionId = simpleNotifiableEvent.sessionId,
-                        roomId = simpleNotifiableEvent.roomId,
-                        eventId = simpleNotifiableEvent.eventId,
+                    val shortcutId = createShortcutId(simpleNotifiableEvent.sessionId, simpleNotifiableEvent.roomId)
+                    setBubbleMetadata(
+                        NotificationCompat.BubbleMetadata.Builder(shortcutId)
+                            .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                            .setAutoExpandBubble(simpleNotifiableEvent.forceBubble)
+                            .setSuppressNotification(false)
+                            .build()
                     )
-                    if (bubbleIntent != null) {
-                        setBubbleMetadata(
-                            NotificationCompat.BubbleMetadata.Builder(
-                                bubbleIntent,
-                                androidx.core.graphics.drawable.IconCompat.createWithResource(context, CommonDrawables.ic_notification)
-                            )
-                                .setDesiredHeightResId(R.dimen.notification_bubble_height)
-                                .setAutoExpandBubble(simpleNotifiableEvent.forceBubble)
-                                .setSuppressNotification(false)
-                                .build()
-                        )
-                    }
                 }
             }
             .build()

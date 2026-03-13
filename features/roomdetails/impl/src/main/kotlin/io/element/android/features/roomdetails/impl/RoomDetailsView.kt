@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import io.element.android.features.roomdetails.impl.R
+import io.element.android.libraries.ui.strings.R as StringR
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -199,13 +200,13 @@ fun RoomDetailsView(
                 
                 if (isBubble) {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.screen_room_details_open_in_app)) },
+                        headlineContent = { Text(stringResource(StringR.string.screen_room_details_open_in_app)) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.Expand())),
                         onClick = onOpenAppClick,
                     )
                 } else {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.screen_room_details_bubble_conversation)) },
+                        headlineContent = { Text(stringResource(StringR.string.screen_room_details_bubble_conversation)) },
                         leadingContent = ListItemContent.Icon(IconSource.Vector(CompoundIcons.PopOut())),
                         onClick = onOpenBubbleClick,
                     )

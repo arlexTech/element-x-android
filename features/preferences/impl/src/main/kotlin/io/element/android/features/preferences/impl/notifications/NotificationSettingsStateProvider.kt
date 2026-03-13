@@ -76,12 +76,14 @@ fun aValidNotificationSettingsState(
         appNotificationsEnabled = appNotificationEnabled,
         isBubblesEnabled = false,
         isBubblesEnabledForAllConversations = false,
+        isBubblesAllowedInSettings = true,
     ),
     changeNotificationSettingAction = changeNotificationSettingAction,
     currentPushDistributor = currentPushDistributor,
     availablePushDistributors = availablePushDistributors.toImmutableList(),
     showChangePushProviderDialog = showChangePushProviderDialog,
     fullScreenIntentPermissionsState = fullScreenIntentPermissionsState,
+    snackbarMessage = null,
     eventSink = eventSink,
 )
 
@@ -97,12 +99,14 @@ fun aInvalidNotificationSettingsState(
         appNotificationsEnabled = true,
         isBubblesEnabled = false,
         isBubblesEnabledForAllConversations = false,
+        isBubblesAllowedInSettings = false,
     ),
     changeNotificationSettingAction = AsyncAction.Uninitialized,
     currentPushDistributor = AsyncData.Uninitialized,
     availablePushDistributors = persistentListOf(),
     showChangePushProviderDialog = false,
     fullScreenIntentPermissionsState = aFullScreenIntentPermissionsState(),
+    snackbarMessage = null,
     eventSink = eventSink,
 )
 

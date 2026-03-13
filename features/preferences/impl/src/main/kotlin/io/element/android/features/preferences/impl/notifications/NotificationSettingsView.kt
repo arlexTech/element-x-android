@@ -40,6 +40,8 @@ import io.element.android.libraries.designsystem.theme.components.ListItem
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.utils.OnLifecycleEvent
 import io.element.android.libraries.fullscreenintent.api.FullScreenIntentPermissionsEvents
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
+import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.ui.strings.CommonStrings
 import kotlinx.collections.immutable.toImmutableList
@@ -61,10 +63,12 @@ fun NotificationSettingsView(
             else -> Unit
         }
     }
+    val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     PreferencePage(
         modifier = modifier,
         onBackClick = onBackClick,
-        title = stringResource(id = R.string.screen_notification_settings_title)
+        title = stringResource(id = R.string.screen_notification_settings_title),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) {
         when (state.matrixSettings) {
             is NotificationSettingsState.MatrixSettings.Invalid -> InvalidNotificationSettingsView(
@@ -182,22 +186,22 @@ private fun NotificationSettingsContentView(
                 onCheckedChange = onMentionNotificationsChange
             )
         }
-        PreferenceCategory(title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_label)) {
+    PreferenceCategory(title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_label)) {
+        PreferenceSwitch(
+            modifier = Modifier,
+            title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_label),
+            isChecked = systemSettings.isBubblesEnabled && systemSettings.isBubblesAllowedInSettings,
+            onCheckedChange = { state.eventSink(NotificationSettingsEvents.SetBubblesEnabled(it)) }
+        )
+        if (systemSettings.isBubblesEnabled && systemSettings.isBubblesAllowedInSettings) {
             PreferenceSwitch(
                 modifier = Modifier,
-                title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_label),
-                isChecked = systemSettings.isBubblesEnabled,
-                onCheckedChange = { state.eventSink(NotificationSettingsEvents.SetBubblesEnabled(it)) }
+                title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_all_conversations_label),
+                isChecked = systemSettings.isBubblesEnabledForAllConversations && systemSettings.isBubblesAllowedInSettings,
+                onCheckedChange = { state.eventSink(NotificationSettingsEvents.SetBubblesEnabledForAllConversations(it)) }
             )
-            if (systemSettings.isBubblesEnabled) {
-                PreferenceSwitch(
-                    modifier = Modifier,
-                    title = stringResource(id = R.string.screen_notification_settings_enable_bubbles_all_conversations_label),
-                    isChecked = systemSettings.isBubblesEnabledForAllConversations,
-                    onCheckedChange = { state.eventSink(NotificationSettingsEvents.SetBubblesEnabledForAllConversations(it)) }
-                )
-            }
         }
+    }
         PreferenceCategory(title = stringResource(id = R.string.screen_notification_settings_additional_settings_section_title)) {
             // TODO We are removing the call notification toggle until support for call notifications has been added
 //                PreferenceSwitch(

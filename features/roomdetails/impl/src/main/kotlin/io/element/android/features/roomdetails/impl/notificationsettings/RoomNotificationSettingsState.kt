@@ -8,6 +8,7 @@
 
 package io.element.android.features.roomdetails.impl.notificationsettings
 
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
@@ -26,6 +27,8 @@ data class RoomNotificationSettingsState(
     val isBubblesEnabled: Boolean,
     val isBubblesEnabledForAllConversations: Boolean,
     val isBubbleEnabledForRoom: Boolean,
+    val isBubblesAllowedInSettings: Boolean,
+    val snackbarMessage: SnackbarMessage?,
     val eventSink: (RoomNotificationSettingsEvent) -> Unit
 )
 

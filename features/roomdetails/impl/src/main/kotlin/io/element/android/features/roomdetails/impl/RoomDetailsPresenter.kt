@@ -155,6 +155,9 @@ class RoomDetailsPresenter(
                     clipboardHelper.copyPlainText(event.text)
                     snackbarDispatcher.post(SnackbarMessage(CommonStrings.common_copied_to_clipboard))
                 }
+                is RoomDetailsEvent.ShowSnackbar -> {
+                    snackbarDispatcher.post(SnackbarMessage(event.messageResId))
+                }
             }
         }
 

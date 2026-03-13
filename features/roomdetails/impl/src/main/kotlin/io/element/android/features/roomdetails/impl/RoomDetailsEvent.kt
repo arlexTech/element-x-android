@@ -8,10 +8,13 @@
 
 package io.element.android.features.roomdetails.impl
 
+import androidx.annotation.StringRes
+
 sealed interface RoomDetailsEvent {
     data class LeaveRoom(val needsConfirmation: Boolean) : RoomDetailsEvent
     data object MuteNotification : RoomDetailsEvent
     data object UnmuteNotification : RoomDetailsEvent
     data class CopyToClipboard(val text: String) : RoomDetailsEvent
     data class SetFavorite(val isFavorite: Boolean) : RoomDetailsEvent
+    data class ShowSnackbar(@StringRes val messageResId: Int) : RoomDetailsEvent
 }

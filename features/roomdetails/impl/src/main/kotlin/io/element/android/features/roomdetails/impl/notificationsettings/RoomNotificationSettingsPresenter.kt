@@ -8,7 +8,14 @@
 
 package io.element.android.features.roomdetails.impl.notificationsettings
 
+import io.element.android.features.roomdetails.impl.R
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -18,9 +25,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedFactory
 import dev.zacsweers.metro.AssistedInject
+import io.element.android.libraries.androidutils.notifications.SystemNotificationsEnabledProvider
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
@@ -30,7 +42,12 @@ import io.element.android.libraries.matrix.api.notificationsettings.Notification
 import io.element.android.libraries.preferences.api.store.AppPreferencesStore
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStore
 import io.element.android.libraries.matrix.api.room.JoinedRoom
+import io.element.android.libraries.push.api.notifications.NotificationCleaner
 import androidx.compose.runtime.collectAsState
+import io.element.android.libraries.designsystem.utils.snackbar.LocalSnackbarDispatcher
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
+import io.element.android.libraries.di.annotations.ApplicationContext
+import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.matrix.api.room.RoomNotificationSettings
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +64,10 @@ class RoomNotificationSettingsPresenter(
     private val notificationSettingsService: NotificationSettingsService,
     private val appPreferencesStore: AppPreferencesStore,
     private val sessionPreferencesStore: SessionPreferencesStore,
+    private val notificationCleaner: NotificationCleaner,
+    private val snackbarDispatcher: io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher,
+    private val systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider,
+    @ApplicationContext private val context: Context,
     @Assisted private val showUserDefinedSettingStyle: Boolean,
 ) : Presenter<RoomNotificationSettingsState> {
     @AssistedFactory
@@ -61,6 +82,7 @@ class RoomNotificationSettingsPresenter(
             mutableStateOf(null)
         }
         val localCoroutineScope = rememberCoroutineScope()
+        val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
         val setNotificationSettingAction: MutableState<AsyncAction<Unit>> = remember { mutableStateOf(AsyncAction.Uninitialized) }
         val restoreDefaultAction: MutableState<AsyncAction<Unit>> = remember { mutableStateOf(AsyncAction.Uninitialized) }
 
@@ -103,6 +125,20 @@ class RoomNotificationSettingsPresenter(
         val isBubbleEnabledForRoom by sessionPreferencesStore.isBubbleEnabledForRoom(room.roomId.value)
             .collectAsState(initial = false)
 
+        val lifecycleOwner = LocalLifecycleOwner.current
+        val isBubblesAllowedInSettings by produceState(initialValue = false, lifecycleOwner) {
+            value = systemNotificationsEnabledProvider.areBubblesAllowed(context)
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    value = systemNotificationsEnabledProvider.areBubblesAllowed(context)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            awaitDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+
         LaunchedEffect(Unit) {
             getDefaultRoomNotificationMode(defaultRoomNotificationMode)
             fetchNotificationSettings(pendingRoomNotificationMode, roomNotificationSettings)
@@ -140,7 +176,28 @@ class RoomNotificationSettingsPresenter(
                 is RoomNotificationSettingsEvent.SetBubbleEnabled -> {
                     localCoroutineScope.launch {
                         sessionPreferencesStore.setBubbleEnabledForRoom(room.roomId.value, event.enabled)
+                        if (event.enabled && systemNotificationsEnabledProvider.areBubblesAllowed(context)) {
+                            notificationCleaner.triggerBubble(room.sessionId, room.roomId)
+                        }
                     }
+                    if (event.enabled && !systemNotificationsEnabledProvider.areBubblesAllowed(context)) {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                        } else {
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                putExtra(Settings.EXTRA_CHANNEL_ID, context.packageName) // Android 10 way
+                            }
+                        }
+                        snackbarDispatcher.post(SnackbarMessage(io.element.android.libraries.ui.strings.R.string.screen_room_notification_settings_bubbles_disabled_globally))
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        context.startActivity(intent)
+                    }
+                }
+                is RoomNotificationSettingsEvent.ShowSnackbar -> {
+                    snackbarDispatcher.post(SnackbarMessage(event.messageResId))
                 }
             }
         }
@@ -158,6 +215,8 @@ class RoomNotificationSettingsPresenter(
             isBubblesEnabled = isBubblesEnabled,
             isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
             isBubbleEnabledForRoom = isBubbleEnabledForRoom,
+            isBubblesAllowedInSettings = isBubblesAllowedInSettings,
+            snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
         )
     }

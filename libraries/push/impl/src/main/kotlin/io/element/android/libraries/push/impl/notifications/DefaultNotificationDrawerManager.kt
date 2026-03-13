@@ -8,10 +8,17 @@
 
 package io.element.android.libraries.push.impl.notifications
 
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import io.element.android.libraries.androidutils.notifications.SystemNotificationsEnabledProvider
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.SingleIn
 import io.element.android.libraries.di.annotations.AppCoroutineScope
+import io.element.android.libraries.di.annotations.ApplicationContext
 import io.element.android.libraries.matrix.api.MatrixClientProvider
 import io.element.android.libraries.matrix.api.core.EventId
 import io.element.android.libraries.matrix.api.core.RoomId
@@ -35,12 +42,15 @@ import io.element.android.libraries.preferences.api.store.SessionPreferencesStor
 import io.element.android.libraries.preferences.api.store.SessionPreferencesStoreFactory
 import io.element.android.libraries.sessionstorage.api.observer.SessionListener
 import io.element.android.libraries.sessionstorage.api.observer.SessionObserver
+import io.element.android.services.appnavstate.api.AppForegroundStateService
 import io.element.android.services.appnavstate.api.AppNavigationState
 import io.element.android.services.appnavstate.api.AppNavigationStateService
 import io.element.android.services.appnavstate.api.NavigationState
 import io.element.android.services.appnavstate.api.currentRoomId
 import io.element.android.services.appnavstate.api.currentSessionId
 import io.element.android.services.appnavstate.api.currentThreadId
+import io.element.android.services.toolbox.api.strings.StringProvider
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -66,6 +76,10 @@ class DefaultNotificationDrawerManager(
     private val appPreferencesStore: AppPreferencesStore,
     private val sessionPreferencesStoreFactory: SessionPreferencesStoreFactory,
     private val notifiableEventResolver: NotifiableEventResolver,
+    @ApplicationContext private val context: Context,
+    private val appForegroundStateService: AppForegroundStateService,
+    private val stringProvider: StringProvider,
+    private val systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider,
     sessionObserver: SessionObserver,
 ) : NotificationCleaner {
     // TODO EAx add a setting per user for this
@@ -224,6 +238,24 @@ class DefaultNotificationDrawerManager(
     }
 
     override suspend fun triggerBubble(sessionId: SessionId, roomId: RoomId) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val areBubblesAllowed = systemNotificationsEnabledProvider.areBubblesAllowed(context)
+
+        if (!areBubblesAllowed) {
+            val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+            } else {
+                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                    putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+            }
+            context.startActivity(intent)
+            return@withContext
+        }
+
         val client = matrixClientProvider.getOrNull(sessionId) ?: matrixClientProvider.getOrRestore(sessionId).getOrNull()
         if (client == null) {
             return@withContext
@@ -289,6 +321,16 @@ class DefaultNotificationDrawerManager(
                 forceBubble = true
             )
             renderEvents(listOf(fallbackEvent))
+        }
+
+        // Minimize the app to allow the bubble to expand
+        if (appForegroundStateService.isInForeground.value) {
+            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_HOME)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            context.startActivity(homeIntent)
+            delay(500)
         }
     }
 

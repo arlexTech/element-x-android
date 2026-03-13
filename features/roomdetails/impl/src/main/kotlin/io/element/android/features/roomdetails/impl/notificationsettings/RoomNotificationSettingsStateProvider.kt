@@ -48,6 +48,8 @@ internal class RoomNotificationSettingsStateProvider : PreviewParameterProvider<
             isBubblesEnabled = false,
             isBubblesEnabledForAllConversations = false,
             isBubbleEnabledForRoom = false,
+            isBubblesAllowedInSettings = true,
+            snackbarMessage = null,
             eventSink = { },
         )
     }

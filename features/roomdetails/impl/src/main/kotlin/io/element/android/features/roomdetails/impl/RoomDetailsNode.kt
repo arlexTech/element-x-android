@@ -8,15 +8,17 @@
 
 package io.element.android.features.roomdetails.impl
 
+import android.app.NotificationManager
 import android.content.Context
-import android.graphics.Bitmap
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.lifecycleScope
-import io.element.android.libraries.matrix.ui.media.ImageLoaderHolder
 import com.bumble.appyx.core.lifecycle.subscribe
 import com.bumble.appyx.core.modality.BuildContext
 import com.bumble.appyx.core.node.Node
@@ -27,22 +29,19 @@ import im.vector.app.features.analytics.plan.MobileScreen
 import io.element.android.annotations.ContributesNode
 import io.element.android.features.leaveroom.api.LeaveRoomRenderer
 import io.element.android.libraries.androidutils.system.startSharePlainTextIntent
+import io.element.android.libraries.androidutils.notifications.SystemNotificationsEnabledProvider
 import io.element.android.libraries.architecture.appyx.launchMolecule
 import io.element.android.libraries.architecture.appyx.anyParent
+import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.callback
-import io.element.android.libraries.core.coroutine.CoroutineDispatchers
-import io.element.android.libraries.designsystem.components.avatar.AvatarData
-import io.element.android.libraries.designsystem.components.avatar.AvatarSize
 import io.element.android.libraries.di.RoomScope
 import io.element.android.libraries.matrix.api.MatrixClient
 import io.element.android.libraries.matrix.api.core.UserId
 import io.element.android.libraries.matrix.api.room.BaseRoom
-import io.element.android.libraries.push.api.notifications.NotificationBitmapLoader
-import io.element.android.libraries.push.api.notifications.NotificationIdProvider
+import io.element.android.libraries.push.api.notifications.NotificationCleaner
 import io.element.android.services.analytics.api.AnalyticsService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import io.element.android.libraries.androidutils.R as AndroidUtilsR
 
@@ -56,9 +55,8 @@ class RoomDetailsNode(
     private val room: BaseRoom,
     private val analyticsService: AnalyticsService,
     private val leaveRoomRenderer: LeaveRoomRenderer,
-    private val notificationBitmapLoader: NotificationBitmapLoader,
-    private val imageLoaderHolder: ImageLoaderHolder,
-    private val dispatchers: CoroutineDispatchers,
+    private val notificationCleaner: NotificationCleaner,
+    private val systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider,
 ) : Node(buildContext, plugins = plugins) {
     interface Callback : Plugin {
         fun navigateToRoomMemberList()
@@ -168,100 +166,28 @@ class RoomDetailsNode(
                 activity.startActivity(intent)
             },
             onOpenBubbleClick = {
-                val shortcutId = "${room.sessionId.value}-${room.roomId.value}"
-                
-                lifecycleScope.launch {
-                    val avatarUrl = state.roomAvatarUrl 
-                        ?: (state.roomType as? RoomDetailsType.Dm)?.otherMember?.avatarUrl
-                        ?: state.heroes.firstOrNull()?.avatarUrl
-                    val avatarData = AvatarData(
-                        id = room.roomId.value,
-                        name = state.roomName,
-                        url = avatarUrl,
-                        size = AvatarSize.TimelineRoom
-                    )
-                    val avatarBitmap = withContext(dispatchers.io) {
-                        notificationBitmapLoader.getRoomBitmap(avatarData, imageLoaderHolder.get(client))
-                    }
-                    val avatarIcon = avatarBitmap?.let { androidx.core.graphics.drawable.IconCompat.createWithBitmap(it) }
+                val areBubblesAllowed = systemNotificationsEnabledProvider.areBubblesAllowed(context)
 
-                    val intent = android.content.Intent().apply {
-                        setClassName(context.packageName, "io.element.android.x.BubbleActivity")
-                        action = "io.element.android.x.ACTION_OPEN_BUBBLE"
-                        putExtra("EXTRA_SESSION_ID", room.sessionId.value)
-                        putExtra("EXTRA_ROOM_ID", room.roomId.value)
-                    }
-                    val pendingIntent = android.app.PendingIntent.getActivity(
-                        context,
-                        room.roomId.value.hashCode(),
-                        intent,
-                        android.app.PendingIntent.FLAG_MUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
-                    )
-                    
-                    // Try to find an existing shortcut created by the Push Notification Library
-                    val existingShortcut = androidx.core.content.pm.ShortcutManagerCompat.getDynamicShortcuts(context)
-                        .firstOrNull { it.id == shortcutId }
-                    
-                    val person = androidx.core.app.Person.Builder()
-                        .setName(state.roomName)
-                        .apply {
-                            if (avatarIcon != null) {
-                                setIcon(avatarIcon)
-                            }
+                if (!areBubblesAllowed) {
+                    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                         }
-                        .build()
-                    
-                    val shortcut = existingShortcut ?: androidx.core.content.pm.ShortcutInfoCompat.Builder(context, shortcutId)
-                        .setShortLabel(state.roomName)
-                        .setLongLabel(state.roomName)
-                        .apply {
-                            if (avatarIcon != null) {
-                                setIcon(avatarIcon)
-                            } else {
-                                setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(context, io.element.android.compound.R.drawable.ic_compound_pop_out))
-                            }
+                    } else {
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                            putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            putExtra(Settings.EXTRA_CHANNEL_ID, context.packageName) // Android 10 way
                         }
-                        .setIntent(intent)
-                        .setLongLived(true)
-                        .setPerson(person)
-                        .build()
-                        
-                    if (existingShortcut == null) {
-                        androidx.core.content.pm.ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
                     }
-                    
-                    val bubbleMetadata = androidx.core.app.NotificationCompat.BubbleMetadata.Builder(
-                        pendingIntent,
-                        shortcut.icon ?: androidx.core.graphics.drawable.IconCompat.createWithResource(context, io.element.android.compound.R.drawable.ic_compound_pop_out)
-                    )
-                        .setAutoExpandBubble(true)
-                        .setSuppressNotification(true)
-                        .setDesiredHeight(600)
-                        .build()
-                        
-                    val messagingStyle = androidx.core.app.NotificationCompat.MessagingStyle(person)
-                        .addMessage(context.getString(io.element.android.libraries.ui.strings.R.string.common_message), System.currentTimeMillis(), person)
-                        
-                    val notification = androidx.core.app.NotificationCompat.Builder(context, "DEFAULT_NOISY_NOTIFICATION_CHANNEL_ID_V2")
-                        .setSmallIcon(io.element.android.compound.R.drawable.ic_compound_pop_out)
-                        .setContentTitle(state.roomName)
-                        .setContentText(context.getString(io.element.android.libraries.ui.strings.R.string.common_message))
-                        .setShortcutId(shortcutId)
-                        .setStyle(messagingStyle)
-                        .setGroup(room.sessionId.value)
-                        .setCategory(androidx.core.app.NotificationCompat.CATEGORY_MESSAGE)
-                        .setBubbleMetadata(bubbleMetadata)
-                        .build()
-                        
-                    // Use the exact ID pattern used by DefaultNotificationDrawerManager for Room Messages
-                    val notificationId = NotificationIdProvider.getRoomMessagesNotificationId(room.sessionId)
-                    androidx.core.app.NotificationManagerCompat.from(context).notify(room.roomId.value, notificationId, notification)
-                    
-                    val homeIntent = android.content.Intent(android.content.Intent.ACTION_MAIN).apply {
-                        addCategory(android.content.Intent.CATEGORY_HOME)
-                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(homeIntent)
+                    state.eventSink(RoomDetailsEvent.ShowSnackbar(
+                        io.element.android.libraries.ui.strings.R.string.screen_room_notification_settings_bubbles_disabled_globally
+                    ))
+                    context.startActivity(intent)
+                    return@RoomDetailsView
+                }
+
+                lifecycleScope.launch {
+                    notificationCleaner.triggerBubble(room.sessionId, room.roomId)
                 }
             }
         )

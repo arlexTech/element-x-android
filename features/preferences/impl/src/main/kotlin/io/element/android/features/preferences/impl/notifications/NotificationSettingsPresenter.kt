@@ -8,21 +8,34 @@
 
 package io.element.android.features.preferences.impl.notifications
 
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import dev.zacsweers.metro.Inject
+import io.element.android.libraries.androidutils.notifications.SystemNotificationsEnabledProvider
 import io.element.android.libraries.architecture.AsyncAction
 import io.element.android.libraries.architecture.AsyncData
 import io.element.android.libraries.architecture.Presenter
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarMessage
+import io.element.android.libraries.designsystem.utils.snackbar.collectSnackbarMessageAsState
 import io.element.android.libraries.architecture.runUpdatingStateNoSuccess
 import io.element.android.libraries.core.extensions.runCatchingExceptions
 import io.element.android.libraries.di.annotations.SessionCoroutineScope
@@ -54,6 +67,9 @@ class NotificationSettingsPresenter(
     private val systemNotificationsEnabledProvider: SystemNotificationsEnabledProvider,
     private val appPreferencesStore: AppPreferencesStore,
     private val fullScreenIntentPermissionsPresenter: Presenter<FullScreenIntentPermissionsState>,
+    private val snackbarDispatcher: io.element.android.libraries.designsystem.utils.snackbar.SnackbarDispatcher,
+    @io.element.android.libraries.di.annotations.ApplicationContext
+    private val context: Context,
     @SessionCoroutineScope
     private val sessionCoroutineScope: CoroutineScope,
 ) : Presenter<NotificationSettingsState> {
@@ -75,6 +91,22 @@ class NotificationSettingsPresenter(
 
         val isBubblesEnabledForAllConversations by appPreferencesStore.isBubblesEnabledForAllConversationsFlow()
             .collectAsState(initial = false)
+
+        val lifecycleOwner = LocalLifecycleOwner.current
+        val isBubblesAllowedInSettings by produceState<Boolean>(initialValue = false, lifecycleOwner) {
+            value = systemNotificationsEnabledProvider.areBubblesAllowed(context)
+            val observer = LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    value = systemNotificationsEnabledProvider.areBubblesAllowed(context)
+                }
+            }
+            lifecycleOwner.lifecycle.addObserver(observer)
+            awaitDispose {
+                lifecycleOwner.lifecycle.removeObserver(observer)
+            }
+        }
+
+        val snackbarMessage by snackbarDispatcher.collectSnackbarMessageAsState()
 
         val matrixSettings: MutableState<NotificationSettingsState.MatrixSettings> = remember {
             mutableStateOf(NotificationSettingsState.MatrixSettings.Uninitialized)
@@ -102,16 +134,16 @@ class NotificationSettingsPresenter(
             distributors.map { it.second }.toImmutableList()
         }
 
-        var currentDistributor by remember { mutableStateOf<AsyncData<Distributor>>(AsyncData.Uninitialized) }
+        val currentDistributorState = remember { mutableStateOf<AsyncData<Distributor>>(AsyncData.Uninitialized) }
         var refreshPushProvider by remember { mutableIntStateOf(0) }
 
         LaunchedEffect(refreshPushProvider) {
             val p = pushService.getCurrentPushProvider(matrixClient.sessionId)
             val distributor = p?.getCurrentDistributor(matrixClient.sessionId)
-            currentDistributor = if (distributor != null) {
-                AsyncData.Success(distributor)
+            currentDistributorState.value = if (distributor != null) {
+                AsyncData.Success<Distributor>(distributor)
             } else {
-                AsyncData.Failure(Exception("Failed to get current push provider"))
+                AsyncData.Failure<Distributor>(Exception("Failed to get current push provider"))
             }
         }
 
@@ -124,8 +156,8 @@ class NotificationSettingsPresenter(
             data ?: return@launch
             val (pushProvider, distributor) = data
             // No op if the distributor is the same.
-            if (distributor == currentDistributor.dataOrNull()) return@launch
-            currentDistributor = AsyncData.Loading(currentDistributor.dataOrNull())
+            if (distributor == currentDistributorState.value.dataOrNull()) return@launch
+            currentDistributorState.value = AsyncData.Loading<Distributor>(currentDistributorState.value.dataOrNull())
             pushService.registerWith(
                 matrixClient = matrixClient,
                 pushProvider = pushProvider,
@@ -136,7 +168,7 @@ class NotificationSettingsPresenter(
                         refreshPushProvider++
                     },
                     {
-                        currentDistributor = AsyncData.Failure(it)
+                        currentDistributorState.value = AsyncData.Failure<Distributor>(it)
                     }
                 )
         }
@@ -172,6 +204,21 @@ class NotificationSettingsPresenter(
                             appPreferencesStore.setBubblesEnabledForAllConversations(false)
                         }
                     }
+                    if (event.enabled && !systemNotificationsEnabledProvider.areBubblesAllowed(context)) {
+                        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            Intent(Settings.ACTION_APP_NOTIFICATION_BUBBLE_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                        } else {
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                putExtra(Settings.EXTRA_CHANNEL_ID, context.packageName)
+                            }
+                        }
+                        snackbarDispatcher.post(SnackbarMessage(io.element.android.libraries.ui.strings.R.string.screen_room_notification_settings_bubbles_disabled_globally))
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        context.startActivity(intent)
+                    }
                 }
                 is NotificationSettingsEvents.SetBubblesEnabledForAllConversations -> {
                     localCoroutineScope.launch { appPreferencesStore.setBubblesEnabledForAllConversations(event.enabled) }
@@ -186,12 +233,14 @@ class NotificationSettingsPresenter(
                 appNotificationsEnabled = appNotificationsEnabled,
                 isBubblesEnabled = isBubblesEnabled,
                 isBubblesEnabledForAllConversations = isBubblesEnabledForAllConversations,
+                isBubblesAllowedInSettings = isBubblesAllowedInSettings,
             ),
             changeNotificationSettingAction = changeNotificationSettingAction.value,
-            currentPushDistributor = currentDistributor,
+            currentPushDistributor = currentDistributorState.value,
             availablePushDistributors = availableDistributors,
             showChangePushProviderDialog = showChangePushProviderDialog,
             fullScreenIntentPermissionsState = key(refreshFullScreenIntentSettings) { fullScreenIntentPermissionsPresenter.present() },
+            snackbarMessage = snackbarMessage,
             eventSink = ::handleEvent,
         )
     }

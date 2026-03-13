@@ -20,6 +20,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.features.roomdetails.impl.R
+import io.element.android.libraries.ui.strings.R as StringR
 import io.element.android.libraries.core.bool.orTrue
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
 import io.element.android.libraries.designsystem.components.button.BackButton
@@ -31,12 +32,14 @@ import io.element.android.libraries.designsystem.components.preferences.Preferen
 import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.Text
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
 
 @Composable
 fun UserDefinedRoomNotificationSettingsView(
     state: RoomNotificationSettingsState,
     onShowGlobalNotifications: () -> Unit,
     onBackClick: () -> Unit,
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -46,7 +49,8 @@ fun UserDefinedRoomNotificationSettingsView(
                 roomName = state.roomName,
                 onBackClick = { onBackClick() }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -67,25 +71,25 @@ fun UserDefinedRoomNotificationSettingsView(
                 )
             }
             PreferenceCategory {
-                if (state.isBubblesEnabled && !state.isBubblesEnabledForAllConversations) {
+                if (state.isBubblesEnabled && state.isBubblesAllowedInSettings && !state.isBubblesEnabledForAllConversations) {
                     io.element.android.libraries.designsystem.components.preferences.PreferenceSwitch(
-                        isChecked = state.isBubbleEnabledForRoom,
+                        isChecked = state.isBubbleEnabledForRoom && state.isBubblesAllowedInSettings,
                         onCheckedChange = {
                             state.eventSink(RoomNotificationSettingsEvent.SetBubbleEnabled(it))
                         },
-                        title = stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                        title = stringResource(StringR.string.screen_room_notification_settings_bubble_label),
                         enabled = true
                     )
-                } else {
-                    val supportingTextRes = if (!state.isBubblesEnabled) {
-                        R.string.screen_room_notification_settings_bubbles_disabled_globally
+                } else if (!state.isBubblesAllowedInSettings || !state.isBubblesEnabled) {
+                    val supportingTextRes = if (!state.isBubblesAllowedInSettings) {
+                        StringR.string.screen_room_notification_settings_bubbles_disabled_globally
                     } else {
-                        R.string.screen_room_notification_settings_bubbles_enabled_globally
+                        StringR.string.screen_room_notification_settings_bubbles_enabled_globally
                     }
                     ListItem(
                         headlineContent = {
                             Text(
-                                stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                                stringResource(id = StringR.string.screen_room_notification_settings_bubble_label),
                                 style = io.element.android.compound.theme.ElementTheme.typography.fontBodyLgRegular
                             )
                         },
@@ -147,5 +151,6 @@ internal fun UserDefinedRoomNotificationSettingsViewPreview(
         state = state,
         onShowGlobalNotifications = {},
         onBackClick = {},
+        snackbarHostState = androidx.compose.material3.SnackbarHostState(),
     )
 }

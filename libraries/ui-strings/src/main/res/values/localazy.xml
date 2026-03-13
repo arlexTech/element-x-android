@@ -194,6 +194,11 @@
   <string name="common_beta">"Beta"</string>
   <string name="common_blocked_users">"Blocked users"</string>
   <string name="common_bubbles">"Bubbles"</string>
+  <string name="screen_room_notification_settings_bubble_label">"Bubble this conversation"</string>
+  <string name="screen_room_details_bubble_conversation">"Open in bubble mode"</string>
+  <string name="screen_room_details_open_in_app">"Open in app"</string>
+  <string name="screen_room_notification_settings_bubbles_disabled_globally">"Bubbles are disabled in global notification settings."</string>
+  <string name="screen_room_notification_settings_bubbles_enabled_globally">"Bubbles are enabled for all conversations in global notification settings."</string>
   <string name="common_call_started">"Call started"</string>
   <string name="common_chat_backup">"Chat backup"</string>
   <string name="common_copied_to_clipboard">"Copied to clipboard"</string>

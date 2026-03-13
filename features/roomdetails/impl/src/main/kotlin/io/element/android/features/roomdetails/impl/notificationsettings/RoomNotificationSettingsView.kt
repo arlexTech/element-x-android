@@ -22,6 +22,7 @@ import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import io.element.android.compound.theme.ElementTheme
 import io.element.android.features.roomdetails.impl.R
+import io.element.android.libraries.ui.strings.R as StringR
 import io.element.android.libraries.core.bool.orTrue
 import io.element.android.libraries.designsystem.components.ClickableLinkText
 import io.element.android.libraries.designsystem.components.async.AsyncActionView
@@ -35,6 +36,8 @@ import io.element.android.libraries.designsystem.theme.components.Scaffold
 import io.element.android.libraries.designsystem.theme.components.TopAppBar
 import io.element.android.libraries.matrix.api.room.RoomNotificationMode
 import io.element.android.libraries.ui.strings.CommonStrings
+import io.element.android.libraries.designsystem.utils.snackbar.SnackbarHost
+import io.element.android.libraries.designsystem.utils.snackbar.rememberSnackbarHostState
 
 @Composable
 fun RoomNotificationSettingsView(
@@ -43,12 +46,14 @@ fun RoomNotificationSettingsView(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val snackbarHostState = rememberSnackbarHostState(snackbarMessage = state.snackbarMessage)
     if (state.showUserDefinedSettingStyle) {
         UserDefinedRoomNotificationSettingsView(
             state = state,
             onShowGlobalNotifications = onShowGlobalNotifications,
             modifier = modifier,
             onBackClick = onBackClick,
+            snackbarHostState = snackbarHostState,
         )
     } else {
         RoomSpecificNotificationSettingsView(
@@ -56,6 +61,7 @@ fun RoomNotificationSettingsView(
             modifier = modifier,
             onShowGlobalNotifications = onShowGlobalNotifications,
             onBackClick = onBackClick,
+            snackbarHostState = snackbarHostState,
         )
     }
 }
@@ -65,6 +71,7 @@ private fun RoomSpecificNotificationSettingsView(
     state: RoomNotificationSettingsState,
     onShowGlobalNotifications: () -> Unit,
     onBackClick: () -> Unit,
+    snackbarHostState: androidx.compose.material3.SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -73,7 +80,8 @@ private fun RoomSpecificNotificationSettingsView(
             RoomNotificationSettingsTopBar(
                 onBackClick = { onBackClick() }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
@@ -146,25 +154,25 @@ private fun RoomSpecificNotificationSettingsView(
             }
 
             PreferenceCategory {
-                if (state.isBubblesEnabled && !state.isBubblesEnabledForAllConversations) {
+                if (state.isBubblesEnabled && state.isBubblesAllowedInSettings && !state.isBubblesEnabledForAllConversations) {
                     PreferenceSwitch(
-                        isChecked = state.isBubbleEnabledForRoom,
+                        isChecked = state.isBubbleEnabledForRoom && state.isBubblesAllowedInSettings,
                         onCheckedChange = {
                             state.eventSink(RoomNotificationSettingsEvent.SetBubbleEnabled(it))
                         },
-                        title = stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                        title = stringResource(id = StringR.string.screen_room_notification_settings_bubble_label),
                         enabled = true
                     )
-                } else {
-                    val supportingTextRes = if (!state.isBubblesEnabled) {
-                        R.string.screen_room_notification_settings_bubbles_disabled_globally
+                } else if (!state.isBubblesAllowedInSettings || !state.isBubblesEnabled) {
+                    val supportingTextRes = if (!state.isBubblesAllowedInSettings) {
+                        StringR.string.screen_room_notification_settings_bubbles_disabled_globally
                     } else {
-                        R.string.screen_room_notification_settings_bubbles_enabled_globally
+                        StringR.string.screen_room_notification_settings_bubbles_enabled_globally
                     }
                     io.element.android.libraries.designsystem.theme.components.ListItem(
                         headlineContent = {
                             io.element.android.libraries.designsystem.theme.components.Text(
-                                stringResource(id = R.string.screen_room_notification_settings_bubble_label),
+                                stringResource(id = StringR.string.screen_room_notification_settings_bubble_label),
                                 style = ElementTheme.typography.fontBodyLgRegular
                             )
                         },

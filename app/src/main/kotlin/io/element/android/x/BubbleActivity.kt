@@ -58,42 +58,6 @@ class BubbleActivity : NodeActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-    }
-
-    override fun onResume() {
-        super.onResume()
-    }
-
-    override fun onPause() {
-        super.onPause()
-    }
-
-    override fun onStop() {
-        super.onStop()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-    }
-
-    override fun finish() {
-        super.finish()
-    }
-
-    override fun finishAndRemoveTask() {
-        super.finishAndRemoveTask()
-    }
-
-    override fun finishAffinity() {
-        super.finishAffinity()
-    }
-
-    override fun finishActivity(requestCode: Int) {
-        super.finishActivity(requestCode)
-    }
-
     @Composable
     private fun MainContent(appBindings: AppBindings) {
         val colors by remember {

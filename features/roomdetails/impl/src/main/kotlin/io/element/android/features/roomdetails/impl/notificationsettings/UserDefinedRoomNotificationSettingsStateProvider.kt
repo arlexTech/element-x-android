@@ -35,6 +35,8 @@ internal class UserDefinedRoomNotificationSettingsStateProvider : PreviewParamet
                 isBubblesEnabled = false,
                 isBubblesEnabledForAllConversations = false,
                 isBubbleEnabledForRoom = false,
+                isBubblesAllowedInSettings = true,
+                snackbarMessage = null,
                 eventSink = { },
             ),
         )
