@@ -21,15 +21,22 @@ import dev.zacsweers.metro.AssistedInject
 import io.element.android.annotations.ContributesNode
 import io.element.android.appconfig.AnalyticsConfig
 import io.element.android.compound.theme.ElementTheme
+import io.element.android.features.analytics.api.AnalyticsOptInNodeCallback
 import io.element.android.libraries.androidutils.browser.openUrlInChromeCustomTab
+import io.element.android.libraries.architecture.NodeInputs
+import io.element.android.libraries.architecture.inputs
 
 @ContributesNode(AppScope::class)
 @AssistedInject
 class AnalyticsOptInNode(
     @Assisted buildContext: BuildContext,
     @Assisted plugins: List<Plugin>,
-    private val presenter: AnalyticsOptInPresenter,
+    presenterFactory: AnalyticsOptInPresenter.Factory,
 ) : Node(buildContext, plugins = plugins) {
+    private val callback = inputs<AnalyticsOptInNodeCallback>()
+
+    private val presenter: AnalyticsOptInPresenter = presenterFactory.create(callback)
+
     private fun onClickTerms(activity: Activity, darkTheme: Boolean) {
         activity.openUrlInChromeCustomTab(null, darkTheme, AnalyticsConfig.POLICY_LINK)
     }

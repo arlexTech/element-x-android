@@ -8,6 +8,15 @@
 
 package io.element.android.features.analytics.api
 
-import io.element.android.libraries.architecture.SimpleFeatureEntryPoint
+import com.bumble.appyx.core.modality.BuildContext
+import com.bumble.appyx.core.node.Node
+import io.element.android.libraries.architecture.FeatureEntryPoint
+import io.element.android.libraries.architecture.NodeInputs
 
-fun interface AnalyticsEntryPoint : SimpleFeatureEntryPoint
+interface AnalyticsEntryPoint : FeatureEntryPoint {
+    fun createNode(parentNode: Node, buildContext: BuildContext, callback: AnalyticsOptInNodeCallback): Node
+}
+
+interface AnalyticsOptInNodeCallback : NodeInputs {
+    fun onAnalyticsOptInFinished()
+}

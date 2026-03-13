@@ -15,9 +15,11 @@ import dev.zacsweers.metro.ContributesBinding
 import io.element.android.features.analytics.api.AnalyticsEntryPoint
 import io.element.android.libraries.architecture.createNode
 
+import io.element.android.features.analytics.api.AnalyticsOptInNodeCallback
+
 @ContributesBinding(AppScope::class)
 class DefaultAnalyticsEntryPoint : AnalyticsEntryPoint {
-    override fun createNode(parentNode: Node, buildContext: BuildContext): Node {
-        return parentNode.createNode<AnalyticsOptInNode>(buildContext)
+    override fun createNode(parentNode: Node, buildContext: BuildContext, callback: AnalyticsOptInNodeCallback): Node {
+        return parentNode.createNode<AnalyticsOptInNode>(buildContext, plugins = listOf(callback))
     }
 }

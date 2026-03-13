@@ -103,7 +103,12 @@ class FtueFlowNode(
                 createNode<NotificationsOptInNode>(buildContext, listOf(callback))
             }
             NavTarget.AnalyticsOptIn -> {
-                analyticsEntryPoint.createNode(this, buildContext)
+                val callback = object : io.element.android.features.analytics.api.AnalyticsOptInNodeCallback {
+                    override fun onAnalyticsOptInFinished() {
+                        defaultFtueService.updateFtueStep()
+                    }
+                }
+                analyticsEntryPoint.createNode(this, buildContext, callback)
             }
             NavTarget.LockScreenSetup -> {
                 val callback = object : LockScreenEntryPoint.Callback {

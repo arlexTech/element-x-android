@@ -233,7 +233,7 @@ class LoggedInFlowNode(
                             is FtueState.Incomplete -> backstack.safeRoot(NavTarget.Ftue)
                             is FtueState.Complete -> {
                                 val currentTargets = backstack.elements.value.map { it.key.navTarget }
-                                if (currentTargets.all { it is NavTarget.Placeholder }) {
+                                if (currentTargets.all { it is NavTarget.Placeholder || it is NavTarget.Ftue }) {
                                     backstack.safeRoot(NavTarget.Home)
                                 } else {
                                     Timber.d("Skip safeRoot(Home) as backstack already contains targets: $currentTargets")
