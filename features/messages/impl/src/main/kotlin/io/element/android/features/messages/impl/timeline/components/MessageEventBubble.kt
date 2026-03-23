@@ -85,8 +85,9 @@ fun MessageEventBubble(
     val isBubble = LocalIsBubble.current
     val actualCutTopStart = state.cutTopStart
     val bubbleShape = remember(state, actualCutTopStart) { MessageEventBubbleDefaults.shape(actualCutTopStart, state.groupPosition, state.isMine) }
-    val radiusPx = (avatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
-    val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + avatarRadius).toPx()
+    val actualAvatarRadius = if (isBubble) 16.dp else avatarRadius
+    val radiusPx = (actualAvatarRadius + SENDER_AVATAR_BORDER_WIDTH).toPx()
+    val yOffsetPx = -(NEGATIVE_MARGIN_FOR_BUBBLE + actualAvatarRadius).toPx()
     val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     BoxWithConstraints(
         modifier = modifier

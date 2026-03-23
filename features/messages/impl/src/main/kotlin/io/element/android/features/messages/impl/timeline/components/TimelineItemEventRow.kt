@@ -129,7 +129,7 @@ import kotlin.math.roundToInt
 
 // The bubble has a negative margin to be placed a bit upper regarding the sender
 // information and overlap the avatar.
-val NEGATIVE_MARGIN_FOR_BUBBLE = (-8).dp
+val NEGATIVE_MARGIN_FOR_BUBBLE = (-12).dp
 
 // Width of the transparent border around the sender avatar
 val SENDER_AVATAR_BORDER_WIDTH = 3.dp
@@ -450,7 +450,7 @@ private fun TimelineItemEventRowContent(
                         // Required for correct RTL layout
                         start.linkTo(parent.start)
                     }
-                    .padding(horizontal = if (isBubble) 8.dp else 16.dp)
+                    .padding(horizontal = 16.dp)
                     .zIndex(1f),
             )
         }
@@ -475,7 +475,7 @@ private fun TimelineItemEventRowContent(
                         end.linkTo(parent.end, margin = if (isBubble) 8.dp else 16.dp)
                     } else {
                         val startMargin = if (isBubble && !timelineRoomInfo.isDm) {
-                            8.dp + BUBBLE_INCOMING_OFFSET
+                            32.dp
                         } else {
                             if (timelineRoomInfo.isDm) 16.dp else 16.dp + BUBBLE_INCOMING_OFFSET
                         }
@@ -540,7 +540,7 @@ private fun TimelineItemEventRowContent(
                         start = when {
                             event.isMine -> if (isBubble) 14.dp else 22.dp
                             timelineRoomInfo.isDm -> if (isBubble && event.isMine) 14.dp else 22.dp
-                            else -> (if (isBubble) 14.dp else 22.dp) + BUBBLE_INCOMING_OFFSET
+                            else -> if (isBubble) 30.dp else 22.dp + BUBBLE_INCOMING_OFFSET
                         },
                         end = if (isBubble) 8.dp else 16.dp
                     )
@@ -572,7 +572,7 @@ private fun MessageSenderInformation(
                 .testTag(TestTags.timelineItemSenderAvatar)
                 .clip(CircleShape)
                 .clickable(onClick = onClick)
-                .size(if (isBubble) 36.dp else 30.dp),
+                .size(if (isBubble) 32.dp else AvatarSize.TimelineSender.dp),
             avatarData = senderAvatar,
             avatarType = AvatarType.User,
         )
