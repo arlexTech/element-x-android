@@ -62,6 +62,7 @@ import io.element.android.features.messages.impl.messagecomposer.AttachmentsBott
 import io.element.android.features.messages.impl.messagecomposer.DisabledComposerView
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerEvent
 import io.element.android.features.messages.impl.messagecomposer.MessageComposerView
+import io.element.android.features.messages.impl.messagecomposer.camera.EmbeddedCameraView
 import io.element.android.features.messages.impl.messagecomposer.suggestions.SuggestionsPickerView
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerState
 import io.element.android.features.messages.impl.pinned.banner.PinnedMessagesBannerView
@@ -196,11 +197,12 @@ fun MessagesView(
     }
 
     val expandableState = rememberExpandableBottomSheetLayoutState()
-    ExpandableBottomSheetLayout(
-        modifier = modifier
-            .fillMaxSize()
-            .imePadding()
-            .systemBarsPadding()
+    Box(modifier = modifier.fillMaxSize()) {
+        ExpandableBottomSheetLayout(
+            modifier = Modifier
+                .fillMaxSize()
+                .imePadding()
+                .systemBarsPadding()
             .onSizeChanged { size ->
                 // Let the composer takes at max half of the available height.
                 // The value will be different if the soft keyboard is displayed
@@ -392,12 +394,31 @@ fun MessagesView(
         onUserDataClick = onUserDataClick,
     )
     ReinviteDialog(state = state)
-    LinkView(
-        onLinkValid = { link ->
-            onLinkClick(link.url, false)
-        },
-        state = state.linkState,
-    )
+        LinkView(
+            onLinkValid = { link ->
+                onLinkClick(link.url, false)
+            },
+            state = state.linkState,
+        )
+
+        AnimatedVisibility(
+            visible = state.composerState.showEmbeddedCamera,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            EmbeddedCameraView(
+                initialMode = state.composerState.embeddedCameraMode,
+                onPhotoCaptured = { uri ->
+                    state.composerState.eventSink(MessageComposerEvent.EmbeddedCameraPhotoCaptured(uri))
+                },
+                onVideoCaptured = { uri ->
+                    state.composerState.eventSink(MessageComposerEvent.EmbeddedCameraVideoCaptured(uri))
+                },
+                onClose = {
+                    state.composerState.eventSink(MessageComposerEvent.ShowEmbeddedCamera(false))
+                },
+            )
+        }
+    }
 }
 
 @Composable
@@ -446,6 +467,8 @@ private fun MessagesViewContent(
             onCreatePollClick = onCreatePollClick,
             enableTextFormatting = state.enableTextFormatting,
         )
+
+
 
         if (state.voiceMessageComposerState.showPermissionRationaleDialog) {
             VoiceMessagePermissionRationaleDialog(

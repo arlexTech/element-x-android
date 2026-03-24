@@ -21,6 +21,8 @@ data class MessageComposerState(
     val isFullScreen: Boolean,
     val mode: MessageComposerMode,
     val showAttachmentSourcePicker: Boolean,
+    val showEmbeddedCamera: Boolean,
+    val embeddedCameraMode: EmbeddedCameraMode,
     val showTextFormatting: Boolean,
     val canShareLocation: Boolean,
     val suggestions: ImmutableList<ResolvedSuggestion>,

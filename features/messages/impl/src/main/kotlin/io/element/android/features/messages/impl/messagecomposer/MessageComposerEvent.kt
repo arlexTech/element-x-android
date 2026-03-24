@@ -35,5 +35,13 @@ sealed interface MessageComposerEvent {
     data class TypingNotice(val isTyping: Boolean) : MessageComposerEvent
     data class SuggestionReceived(val suggestion: Suggestion?) : MessageComposerEvent
     data class InsertSuggestion(val resolvedSuggestion: ResolvedSuggestion) : MessageComposerEvent
+    data class ShowEmbeddedCamera(val show: Boolean, val initialMode: EmbeddedCameraMode = EmbeddedCameraMode.Photo) : MessageComposerEvent
+    data class EmbeddedCameraPhotoCaptured(val uri: Uri) : MessageComposerEvent
+    data class EmbeddedCameraVideoCaptured(val uri: Uri) : MessageComposerEvent
     data object SaveDraft : MessageComposerEvent
 }
+
+enum class EmbeddedCameraMode {
+    Photo, Video
+}
+

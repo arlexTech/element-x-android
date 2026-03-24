@@ -134,6 +134,7 @@ class MessageComposerPresenter(
     private val mediaSender = mediaSenderFactory.create(timelineMode = timelineController.mainTimelineMode())
 
     private val cameraPermissionPresenter = permissionsPresenterFactory.create(Manifest.permission.CAMERA)
+    private val microphonePermissionPresenter = permissionsPresenterFactory.create(Manifest.permission.RECORD_AUDIO)
     private var pendingEvent: MessageComposerEvent? = null
     private val suggestionSearchTrigger = MutableStateFlow<Suggestion?>(null)
 
@@ -158,6 +159,7 @@ class MessageComposerPresenter(
         val markdownTextEditorState = rememberMarkdownTextEditorState(initialText = null, initialFocus = false)
 
         val cameraPermissionState = cameraPermissionPresenter.present()
+        val microphonePermissionState = microphonePermissionPresenter.present()
 
         val canShareLocation = remember { mutableStateOf(false) }
         LaunchedEffect(Unit) {
@@ -180,19 +182,33 @@ class MessageComposerPresenter(
             mutableStateOf(false)
         }
         var showAttachmentSourcePicker: Boolean by remember { mutableStateOf(false) }
+        var showEmbeddedCamera: Boolean by remember { mutableStateOf(false) }
+        var embeddedCameraMode: EmbeddedCameraMode by remember { mutableStateOf(EmbeddedCameraMode.Photo) }
 
         val sendTypingNotifications by remember {
             sessionPreferencesStore.isSendTypingNotificationsEnabled()
         }.collectAsState(initial = true)
 
-        LaunchedEffect(cameraPermissionState.permissionGranted) {
+        LaunchedEffect(cameraPermissionState.permissionGranted, microphonePermissionState.permissionGranted) {
             if (cameraPermissionState.permissionGranted) {
                 when (pendingEvent) {
-                    is MessageComposerEvent.PickAttachmentSource.PhotoFromCamera -> cameraPhotoPicker.launch()
-                    is MessageComposerEvent.PickAttachmentSource.VideoFromCamera -> cameraVideoPicker.launch()
+                    is MessageComposerEvent.PickAttachmentSource.PhotoFromCamera -> {
+                        showEmbeddedCamera = true
+                        embeddedCameraMode = EmbeddedCameraMode.Photo
+                    }
+                    is MessageComposerEvent.PickAttachmentSource.VideoFromCamera -> {
+                        if (microphonePermissionState.permissionGranted) {
+                            showEmbeddedCamera = true
+                            embeddedCameraMode = EmbeddedCameraMode.Video
+                        } else {
+                            microphonePermissionState.eventSink(PermissionsEvent.RequestPermissions)
+                        }
+                    }
                     else -> Unit
                 }
-                pendingEvent = null
+                if (pendingEvent !is MessageComposerEvent.PickAttachmentSource.VideoFromCamera || microphonePermissionState.permissionGranted) {
+                    pendingEvent = null
+                }
             }
         }
 
@@ -283,7 +299,8 @@ class MessageComposerPresenter(
                 MessageComposerEvent.PickAttachmentSource.PhotoFromCamera -> localCoroutineScope.launch {
                     showAttachmentSourcePicker = false
                     if (cameraPermissionState.permissionGranted) {
-                        cameraPhotoPicker.launch()
+                        showEmbeddedCamera = true
+                        embeddedCameraMode = EmbeddedCameraMode.Photo
                     } else {
                         pendingEvent = event
                         cameraPermissionState.eventSink(PermissionsEvent.RequestPermissions)
@@ -291,11 +308,15 @@ class MessageComposerPresenter(
                 }
                 MessageComposerEvent.PickAttachmentSource.VideoFromCamera -> localCoroutineScope.launch {
                     showAttachmentSourcePicker = false
-                    if (cameraPermissionState.permissionGranted) {
-                        cameraVideoPicker.launch()
-                    } else {
+                    if (cameraPermissionState.permissionGranted && microphonePermissionState.permissionGranted) {
+                        showEmbeddedCamera = true
+                        embeddedCameraMode = EmbeddedCameraMode.Video
+                    } else if (!cameraPermissionState.permissionGranted) {
                         pendingEvent = event
                         cameraPermissionState.eventSink(PermissionsEvent.RequestPermissions)
+                    } else {
+                        pendingEvent = event
+                        microphonePermissionState.eventSink(PermissionsEvent.RequestPermissions)
                     }
                 }
                 MessageComposerEvent.PickAttachmentSource.Location -> {
@@ -350,6 +371,18 @@ class MessageComposerPresenter(
                         }
                     }
                 }
+                is MessageComposerEvent.ShowEmbeddedCamera -> {
+                    showEmbeddedCamera = event.show
+                    embeddedCameraMode = event.initialMode
+                }
+                is MessageComposerEvent.EmbeddedCameraPhotoCaptured -> {
+                    showEmbeddedCamera = false
+                    handlePickedMedia(event.uri, MimeTypes.Jpeg)
+                }
+                is MessageComposerEvent.EmbeddedCameraVideoCaptured -> {
+                    showEmbeddedCamera = false
+                    handlePickedMedia(event.uri, MimeTypes.Mp4)
+                }
                 MessageComposerEvent.SaveDraft -> {
                     val draft = createDraftFromState(markdownTextEditorState, richTextEditorState)
                     sessionCoroutineScope.updateDraft(draft, isVolatile = false)
@@ -380,6 +413,8 @@ class MessageComposerPresenter(
             isFullScreen = isFullScreen.value,
             mode = messageComposerContext.composerMode,
             showAttachmentSourcePicker = showAttachmentSourcePicker,
+            showEmbeddedCamera = showEmbeddedCamera,
+            embeddedCameraMode = embeddedCameraMode,
             showTextFormatting = showTextFormatting,
             canShareLocation = canShareLocation.value,
             suggestions = suggestions.toImmutableList(),
