@@ -13,6 +13,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.core.app.NotificationCompat
+import io.element.android.libraries.push.impl.R
+import io.element.android.libraries.push.impl.notifications.shortcut.createShortcutId
 import io.element.android.libraries.androidutils.notifications.SystemNotificationsEnabledProvider
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.ContributesBinding
@@ -176,16 +179,26 @@ class DefaultNotificationDrawerManager(
      */
     override fun clearMessagesForRoom(sessionId: SessionId, roomId: RoomId) {
         val notifications = activeNotificationsProvider.getAllMessageNotificationsForRoom(sessionId, roomId)
-        var hasBubble = false
+        var handledBaseNotification = false
         notifications.forEach { sbn ->
-            val isBubbling = (sbn.notification.flags and android.app.Notification.FLAG_BUBBLE) != 0
+            val isBubbling = (sbn.notification.flags and 0x1000) != 0 || NotificationCompat.getBubbleMetadata(sbn.notification) != null
             if (isBubbling) {
-                hasBubble = true
+                if (sbn.tag == roomId.value) handledBaseNotification = true
+                val shortcutId = createShortcutId(sessionId, roomId)
+                val bubbleMetadata = NotificationCompat.BubbleMetadata.Builder(shortcutId)
+                    .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                    .setAutoExpandBubble(false)
+                    .setSuppressNotification(true)
+                    .build()
+                val newNotification = NotificationCompat.Builder(context, sbn.notification)
+                    .setBubbleMetadata(bubbleMetadata)
+                    .build()
+                notificationDisplayer.showNotification(sbn.tag, sbn.id, newNotification)
             } else {
                 notificationDisplayer.cancelNotification(sbn.tag, sbn.id)
             }
         }
-        if (!hasBubble) {
+        if (!handledBaseNotification) {
             notificationDisplayer.cancelNotification(roomId.value, NotificationIdProvider.getRoomMessagesNotificationId(sessionId))
         }
         clearSummaryNotificationIfNeeded(sessionId)
@@ -198,16 +211,26 @@ class DefaultNotificationDrawerManager(
     override fun clearMessagesForThread(sessionId: SessionId, roomId: RoomId, threadId: ThreadId) {
         val tag = NotificationCreator.messageTag(roomId, threadId)
         val notifications = activeNotificationsProvider.getMessageNotificationsForRoom(sessionId, roomId, threadId)
-        var hasBubble = false
+        var handledBaseNotification = false
         notifications.forEach { sbn ->
-            val isBubbling = (sbn.notification.flags and android.app.Notification.FLAG_BUBBLE) != 0
+            val isBubbling = (sbn.notification.flags and 0x1000) != 0 || NotificationCompat.getBubbleMetadata(sbn.notification) != null
             if (isBubbling) {
-                hasBubble = true
+                if (sbn.tag == tag) handledBaseNotification = true
+                val shortcutId = createShortcutId(sessionId, roomId)
+                val bubbleMetadata = NotificationCompat.BubbleMetadata.Builder(shortcutId)
+                    .setDesiredHeightResId(R.dimen.notification_bubble_height)
+                    .setAutoExpandBubble(false)
+                    .setSuppressNotification(true)
+                    .build()
+                val newNotification = NotificationCompat.Builder(context, sbn.notification)
+                    .setBubbleMetadata(bubbleMetadata)
+                    .build()
+                notificationDisplayer.showNotification(sbn.tag, sbn.id, newNotification)
             } else {
                 notificationDisplayer.cancelNotification(sbn.tag, sbn.id)
             }
         }
-        if (!hasBubble) {
+        if (!handledBaseNotification) {
             notificationDisplayer.cancelNotification(tag, NotificationIdProvider.getRoomMessagesNotificationId(sessionId))
         }
         clearSummaryNotificationIfNeeded(sessionId)

@@ -20,6 +20,7 @@ import io.element.android.libraries.push.api.GetCurrentPushProvider
 import io.element.android.libraries.push.api.PushService
 import io.element.android.libraries.push.api.PusherRegistrationFailure
 import io.element.android.libraries.push.api.history.PushHistoryItem
+import io.element.android.libraries.push.impl.notifications.SyncNotificationWatcher
 import io.element.android.libraries.push.impl.push.MutableBatteryOptimizationStore
 import io.element.android.libraries.push.impl.store.PushDataStore
 import io.element.android.libraries.push.impl.test.TestPush
@@ -47,9 +48,11 @@ class DefaultPushService(
     private val pushDataStore: PushDataStore,
     private val mutableBatteryOptimizationStore: MutableBatteryOptimizationStore,
     private val serviceUnregisteredHandler: ServiceUnregisteredHandler,
+    private val syncNotificationWatcher: SyncNotificationWatcher,
 ) : PushService, SessionListener {
     init {
         observeSessions()
+        syncNotificationWatcher.start()
     }
 
     override suspend fun getCurrentPushProvider(sessionId: SessionId): PushProvider? {

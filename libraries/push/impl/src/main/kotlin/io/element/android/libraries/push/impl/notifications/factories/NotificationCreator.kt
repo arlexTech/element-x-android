@@ -214,11 +214,12 @@ class DefaultNotificationCreator(
             .setLargeIcon(largeIcon)
             .setDeleteIntent(pendingIntentFactory.createDismissRoomPendingIntent(roomInfo.sessionId, roomInfo.roomId))
             .apply {
-                if (notificationAccountParams.isBubblesEnabled || events.any { it.forceBubble }) {
+                val hasExistingBubble = existingNotification?.let { NotificationCompat.getBubbleMetadata(it) != null } ?: false
+                if (notificationAccountParams.isBubblesEnabled || events.any { it.forceBubble } || hasExistingBubble) {
                     val isBubbleEnabledForRoom = notificationAccountParams.sessionPreferencesStore
                         ?.isBubbleEnabledForRoom(roomInfo.roomId.value)?.first() ?: false
 
-                    if (notificationAccountParams.isBubblesEnabledForAllConversations || isBubbleEnabledForRoom || events.any { it.forceBubble }) {
+                    if (notificationAccountParams.isBubblesEnabledForAllConversations || isBubbleEnabledForRoom || events.any { it.forceBubble } || hasExistingBubble) {
                         val shortcutId = createShortcutId(roomInfo.sessionId, roomInfo.roomId)
                         setBubbleMetadata(
                             NotificationCompat.BubbleMetadata.Builder(shortcutId)
